@@ -7,14 +7,22 @@
 
 <!-- badges: end -->
 
-Contact: Tim Wildauer (<twildauer@blc.edu>)
+Contact: Tim Wildauer (<twildauer@blc.edu>) - deconvolution
 
-Contributors: John Drake (<jdrake@uga.edu>), Eric Marty
-(<emarty@uga.edu>)
+Contributors: John Drake (<jdrake@uga.edu>)  
+Eric Marty (<emarty@uga.edu>) - visualization Rachel Mercaldo
+(<mercaldo@uga.edu>) - forecasting
 
-<mark>This is a placeholder repo. Work is currently being done in
-<https://github.com/timrwild/2019CoV> and will be moved into this repo
-at a later date.</mark>
+Initial work was done in <https://github.com/timrwild/2019CoV> and is
+being moved into this repo now.
+
+## Contributing
+
+  - Code for functions should go in scripts in the R/ folder.
+  - High level scripts or Rmd documents should go at the top level.
+  - data is in the /data folder. NOTE: use the data in the folder for
+    now; Eric is working on a script to pull it from the google sheet
+    where it is kept updated.
 
 ## Objective
 

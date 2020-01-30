@@ -1,0 +1,78 @@
+---
+title: "Backcasting with Deconvolution"
+author: Eric Marty, Tim Wildauer
+output: html_notebook
+---
+
+# Current Outbreak Data
+
+```{r}
+
+library(tidyverse)
+library(tibbletime)
+
+## also possible to link directly to google sheet. see mosaic::fetchGoogle(), requires publishing sheet
+china_province_data_cases <- read.csv("data/china_province_data_cases.csv",stringsAsFactors = FALSE)
+
+cases <- china_province_data_cases %>% 
+  select(-Type) %>% 
+  mutate(Date = parse_date(Date,format="%m-%d-%Y")) %>% 
+  drop_na(Date) %>% 
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(China = rowSums(.[,-1],na.rm = TRUE))
+
+cases.totals <- china_province_data_cases %>% 
+  select(-Type) %>%
+  filter(grepl("totals",Date)) %>% 
+  rename(Totals = Date) %>% 
+  mutate(China = rowSums(.[,-1],na.rm = TRUE))
+
+cases.totals
+
+cases.totals %>% select(Totals, China)
+
+plot(x=cases$Date,y=cases$China,type="o",pch=20,cex=.7)
+
+```
+
+# Deconvolution of case reports to derive ts of $I$ 
+
+```{r}
+
+# set up container
+
+china <- cases %>% select(Date, cases = China)
+
+#standard model inputs
+parms <- c(mean,sd)
+distribution <- "gamma"
+
+tmpresults <- deconvolve_single_curve(curve = china$cases, parms = parms)
+
+china$I <- tmpresults$average
+
+plot(x=china$Date,y=china$cases, type="o",pch=20,cex=.7,main='Wuhan Outbreak Curves')
+lines(x=china$Date,y=china$I, type = 'o', pch=20,cex=.7,col="red")
+text(mean(china$Date),y=2000,labels="confirmed cases",col=1)
+text(mean(china$Date),y=1800,labels="Infected class I",col=2)
+
+
+# for(method in 1:length(deconvolutions)){
+#         lines(deconvolutions[[method]],col=method+2,type="l")
+# }
+# text(5,y=360,labels="simple",col=3)
+# text(5,y=340,labels="random",col=4)
+# text(5,y=320,labels="ridge",col=5)
+# text(5,y=300,labels="rl",col=6)
+# text(5,y=290,labels="freq",col=7)
+
+
+```
+
+# TDAR
+
+```{r}
+get_tdar(china$cases)
+get_tdar(china$I)
+```
+
