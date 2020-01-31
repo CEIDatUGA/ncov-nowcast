@@ -46,13 +46,13 @@ deconvolve_single_curve <- function(curve, parms) {
   #list of estimates to average
   deconvolutions = list(simple
                         , random
-                        , ridge
+                        #, ridge
                         , rl
-                        #, frequency
+                        , frequency
                         , c(frequency, 0, 0, 0))
   
   average <- deconvolve_infection_curve_average(deconvolutions)
   
-  curves <- list(curve=curve, simple=simple, random=random, ridge=ridge, rl=rl, frequency=frequency, average=average)
+  curves <- list(curve=curve, simple=simple, random=random, ridge=ridge, rl=rl, fourier=fourier, frequency=frequency, average=average)
   return(curves)
 }
