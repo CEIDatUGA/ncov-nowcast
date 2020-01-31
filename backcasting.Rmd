@@ -65,7 +65,7 @@ lines(x=china$Date,y=china$I, type = 'o', pch=20,cex=.7,col="red")
 text(mean(china$Date),y=2000,labels="confirmed cases",col=1)
 text(mean(china$Date),y=1800,labels="Infected class I",col=2)
 
-
+save(tmpresults, file = "backcasting_I.rdata") #Rachel edit, to save results to file
 # for(method in 1:length(deconvolutions)){
 #         lines(deconvolutions[[method]],col=method+2,type="l")
 # }
