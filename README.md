@@ -55,3 +55,26 @@ curve of patients with symptom onset; (2) construct estimated curve of
 patients with active infection. From these curves we will use a
 statistical model (perhaps time-varying autoregressive model) to predict
 the epidemic size at the current time.
+
+## MODEL
+
+Update: there are now 4 time series, not 3: E (Exposed), I (infected),
+H(Hostpitalized), Reported
+
+This is because there isd a lag between hospitalization and case
+reporting.
+
+**The period of E** is a stationary distribution (gamma)
+
+**The period of I** is goin down over time due to expanded testing. John
+Drake has a mode for this here:
+<https://github.com/jdrakephd/wuhan-stochastic-model/blob/master/model-v2.Rmd>
+
+Period of I is stationary distribution through January 16th, then drops
+off rapidly.
+
+**The period of H** (hostpitalization) is also going down, and is also
+modelled here:
+<https://github.com/jdrakephd/wuhan-stochastic-model/blob/master/model-v2.Rmd>
+
+![](images/concept.png)
