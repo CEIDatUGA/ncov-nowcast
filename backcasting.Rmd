@@ -1,7 +1,9 @@
 ---
 title: "Backcasting with Deconvolution"
-author: Eric Marty, Tim Wildauer
-output: html_notebook
+author: "Eric Marty, Tim Wildauer"
+output:
+  html_document:
+    df_print: paged
 ---
 
 # Current Outbreak Data
@@ -10,6 +12,8 @@ output: html_notebook
 
 library(tidyverse)
 library(tibbletime)
+
+source('R/package.R'); source('R/deconcolve.R'); source('R/simple_tdar.R')
 
 ## also possible to link directly to google sheet. see mosaic::fetchGoogle(), requires publishing sheet
 china_province_data_cases <- read.csv("data/china_province_data_cases.csv",stringsAsFactors = FALSE)
@@ -21,15 +25,15 @@ cases <- china_province_data_cases %>%
   tibbletime::as_tbl_time(index=Date) %>% 
   mutate(China = rowSums(.[,-1],na.rm = TRUE))
 
-cases.totals <- china_province_data_cases %>% 
-  select(-Type) %>%
-  filter(grepl("totals",Date)) %>% 
-  rename(Totals = Date) %>% 
-  mutate(China = rowSums(.[,-1],na.rm = TRUE))
+#cases.totals <- china_province_data_cases %>% 
+#  select(-Type) %>%
+#  filter(grepl("totals",Date)) %>% 
+#  rename(Totals = Date) %>% 
+#  mutate(China = rowSums(.[,-1],na.rm = TRUE))
 
-cases.totals
+#cases.totals
 
-cases.totals %>% select(Totals, China)
+#cases.totals %>% select(Totals, China)
 
 plot(x=cases$Date,y=cases$China,type="o",pch=20,cex=.7)
 
@@ -44,6 +48,11 @@ plot(x=cases$Date,y=cases$China,type="o",pch=20,cex=.7)
 china <- cases %>% select(Date, cases = China)
 
 #standard model inputs
+shape=6.2
+mean=5.6
+scale=mean/shape
+sd=sqrt(shape*scale^2)
+
 parms <- c(mean,sd)
 distribution <- "gamma"
 
