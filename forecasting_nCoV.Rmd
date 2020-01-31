@@ -1,0 +1,76 @@
+---
+title: "Forecasting"
+author: "Rachel Mercaldo"
+date: "January 31, 2020"
+output: html_document
+---
+
+```{r clean up and load packages and data, echo = FALSE, message = FALSE, warning = FALSE}
+#rm(list=ls())
+#graphics.off()
+
+library(forecast)
+
+load("backcasting_I.rdata")
+```
+
+Pull out the results we care about: the original curve, the simple and random backcasts.
+
+Note that I also remove the final indices, which are inaccurate per Tim:
+```{r data sorting, echo = FALSE}
+dat <- as.data.frame(tmpresults[1:3])[1:23,] 
+```
+
+Quick plot to see curves:
+
+```{r plot, echo = FALSE}
+plot(x = 1:23, y = dat$simple, type = "l", col = "red")
+lines(x = 1:23, y = dat$curve, type = "l", col = "blue")
+lines(x = 1:23, y = dat$random, type = "l", col = "green")
+legend(2, 2000, legend=c("Raw", "Simple", "Random"),
+       col=c("blue","red","green"), lty=1:2, cex=0.8)
+```
+
+Based on the poster Tim presented, the random backcasting was a good method. I'll use that and the simple, but we can discuss reasons to use the others and it won't be difficult to switch out the code
+
+Talking with Shiwei (Terrence) Tang, we decided exponential smoothing would be best. This is based on the fact this is the start of the epidemic, expected to have exponential growth for a bit, and we don't have many data points to characterize a more complicated time series. That said: I'll be using the Holt-Winters method of exponential smoothing, conveniently in the same package.
+
+
+For the random:
+
+```{r random ts}
+#make time series object:
+#make data a time series object for R:
+ts<-ts(dat$random, end = 22,frequency = 1) 
+#allowing the frequency parameter to stay at 1 (1 observation per time period)
+#selecting end = 22 as the case data was collected up to 1/29/2020 (so the 
+#  backcast ends on 1/22/2020)
+
+#simple plot:
+plot(ts, main = "Random backcast curve")
+
+fit <- HoltWinters(ts, gamma=FALSE)
+plot(fit, main = "Exponential smoothing of random backcast") #visually fits well, seems to disregard the lower point on day 22, more in line with actual data
+
+#some forecasting using the exponential fit:
+foreward<-forecast(fit,9) #fit for 9 future time points to get us to the 31st.
+plot(foreward, main = "Forecast of exponential fit, random backcast") #totally incorrect
+```
+
+For the simple:
+
+```{r simple ts}
+ts2<-ts(dat$simple, end = 22,frequency = 1) 
+plot(ts2, main = "Simple backcast curve")
+fit2<-HoltWinters(ts2, gamma = FALSE)
+plot(fit2, main = "Exponential smoothing of simple backcast")
+
+forward2<-forecast(fit2,9)
+plot(forward2, main = "Forecast of exponential fit, simple backcast") 
+```
+
+The simple backcast is much closer to the actual case counts today, however, the exponential smoothing was suspicious of the sharp peak in the raw data.
+
+Since the raw data ends on the 29th, updating to include the case counts from the 30th and 31st before backcasting will improve the smoothing and prediction. 
+
+As mentioned above, we can also discuss the other backcasting methods and choose another, or use all, for forecasting as desired. 
