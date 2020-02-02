@@ -119,8 +119,8 @@ distribution <- "gamma"
 
 infection_curve = as.data.frame(allchina, ncol=1)
 for (i in 1:6) {
-  new=deconvolve_single_curve(final_curve[,i], parms = parms, skip = c("ridge","fourier","frequency"))
-  infection_curve=cbind(infection_curve, make_df(new, skip = c("ridge","fourier","frequency")))
+  new=deconvolve_single_curve(final_curve[,i], parms = parms, skip = c("random","ridge","fourier","frequency"))
+  infection_curve=cbind(infection_curve, make_df(new, skip = c("random","ridge","fourier","frequency")))
 }
 
 # First column contains the original curve, the subsequent columns contain an estimation of the infection curve
@@ -128,7 +128,7 @@ plot(infection_curve[1:53,1], type='l', ylim=c(0,3000))
 for (i in 2:length(infection_curve[1,])) {
   lines(infection_curve[1:53,i], type='l')
 }
-
+lines(infection_curve[1:53,1], type='l', ylim=c(0,3000), col='RED')
 
 #tmpresults <- deconvolve_single_curve(curve = china$cases, parms = parms)
 
