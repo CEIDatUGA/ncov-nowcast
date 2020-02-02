@@ -699,8 +699,8 @@ deconvolve_infection_curve_simple = function(symptom_onset_curve, median_incubat
   outbreak_duration = length(symptom_onset_curve)
   deconvolved_infection_curve_simple = c(symptom_onset_curve[(median_incubation_period + 1):outbreak_duration], 
                                          rep(0, times = median_incubation_period))
-  deconvolved_infection_curve_simple_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_simple)
-  return(deconvolved_infection_curve_simple_rounded)
+  #deconvolved_infection_curve_simple_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_simple)
+  return(deconvolved_infection_curve_simple)
 }
 
 
@@ -799,8 +799,8 @@ deconvolve_infection_curve_random = function(symptom_onset_curve, incubation_per
     possible_infection_curves = cbind(possible_infection_curves, possible_infection_curve)
   }
   estimated_infection_curve = average_possible_infection_curves(possible_infection_curves)
-  estimated_infection_curve_rounded = round_infection_curve(symptom_onset_curve, estimated_infection_curve)
-  return(estimated_infection_curve_rounded)
+  #estimated_infection_curve_rounded = round_infection_curve(symptom_onset_curve, estimated_infection_curve)
+  return(estimated_infection_curve)
 }
 
 #' Finds the average estimated infection curve given a dataframe of possible infection curves.
@@ -862,8 +862,8 @@ deconvolve_infection_curve_ridge = function(symptom_onset_curve, probability_mat
   deconvolved_infection_curve_ridge = deconvolved_coefficients[-1]
   deconvolved_infection_curve_ridge = deconvolved_infection_curve_ridge/sum(deconvolved_infection_curve_ridge)
   deconvolved_infection_curve_ridge = deconvolved_infection_curve_ridge * sum(symptom_onset_curve)
-  deconvolved_infection_curve_ridge_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_ridge)
-  return(deconvolved_infection_curve_ridge_rounded)
+  #deconvolved_infection_curve_ridge_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_ridge)
+  return(deconvolved_infection_curve_ridge)
 }
 
 
@@ -958,8 +958,8 @@ deconvolve_infection_curve_fourier = function(symptom_onset_curve, filter_kernel
   deconvolved_infection_curve_fourier[which(deconvolved_infection_curve_fourier < 0)] = 0
   deconvolved_infection_curve_fourier = deconvolved_infection_curve_fourier/sum(deconvolved_infection_curve_fourier)
   deconvolved_infection_curve_fourier = deconvolved_infection_curve_fourier * sum(symptom_onset_curve)
-  deconvolved_infection_curve_fourier_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_fourier)
-  return(deconvolved_infection_curve_fourier_rounded)
+  #deconvolved_infection_curve_fourier_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_fourier)
+  return(deconvolved_infection_curve_fourier)
 }
 
 
@@ -1088,8 +1088,9 @@ deconvolve_infection_curve_frequency = function(symptom_onset_curve, matrix, inc
   deconvolved_infection_curve_frequency[which(deconvolved_infection_curve_frequency < 0)] = 0
   deconvolved_infection_curve_frequency = deconvolved_infection_curve_frequency/sum(deconvolved_infection_curve_frequency)
   deconvolved_infection_curve_frequency = deconvolved_infection_curve_frequency * sum(symptom_onset_curve)
-  deconvolved_infection_curve_frequency_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_frequency)
-  return(deconvolved_infection_curve_frequency_rounded)
+  deconvolved_infection_curve_frequency = c(deconvolved_infection_curve_frequency, rep(0, times=length(symptom_onset_curve)-length(deconvolved_infection_curve_frequency)))
+  #deconvolved_infection_curve_frequency_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_frequency)
+  return(deconvolved_infection_curve_frequency)
 }
 
 
@@ -1180,8 +1181,8 @@ deconvolve_infection_curve_rl = function(symptom_onset_curve, matrix, estimate)
   deconvolved_infection_curve_rl[which(deconvolved_infection_curve_rl < 0)] = 0
   deconvolved_infection_curve_rl = deconvolved_infection_curve_rl/sum(deconvolved_infection_curve_rl)
   deconvolved_infection_curve_rl = deconvolved_infection_curve_rl * sum(symptom_onset_curve)
-  deconvolved_infection_curve_rl_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_rl)
-  return(deconvolved_infection_curve_rl_rounded)
+  #deconvolved_infection_curve_rl_rounded = round_infection_curve(symptom_onset_curve, deconvolved_infection_curve_rl)
+  return(deconvolved_infection_curve_rl)
 }
 
 

@@ -1,4 +1,4 @@
-deconvolve_single_curve <- function(curve, parms) {
+deconvolve_single_curve <- function(curve, parms, skip) {
 
   # simple
   simple <- deconvolve_infection_curve_simple(curve, parms[1])
@@ -7,7 +7,7 @@ deconvolve_single_curve <- function(curve, parms) {
   random <- deconvolve_infection_curve_random(
     curve,
     generate_incubation_period,
-    trials = 100,
+    trials = 35,
     distribution = "gamma",
     parms = parms
   )
@@ -43,14 +43,15 @@ deconvolve_single_curve <- function(curve, parms) {
   incubation_length <- determine_incubation_length(distribution, parms)
   frequency <- deconvolve_infection_curve_frequency(curve, frequency_matrix, incubation_length)
   
-  #list of estimates to average
-  deconvolutions = list(simple
-                        , random
-                        #, ridge
-                        , rl
-                        , frequency
-                        , c(frequency, 0, 0, 0))
   
+  #list of estimates to average
+  deconvolutions = list(simple)
+  if(!("random" %in% skip)) deconvolutions[["random"]]=random
+  if(!("ridge" %in% skip)) deconvolutions[["ridge"]]=ridge
+  if(!("rl" %in% skip)) deconvolutions[["rl"]]=rl
+  if(!("fourier" %in% skip)) deconvolutions[["fourier"]]=fourier
+  if(!("frequency" %in% skip)) deconvolutions[["frequency"]]=frequency
+
   average <- deconvolve_infection_curve_average(deconvolutions)
   
   curves <- list(curve=curve, simple=simple, random=random, ridge=ridge, rl=rl, fourier=fourier, frequency=frequency, average=average)
