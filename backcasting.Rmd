@@ -8,7 +8,7 @@ output:
 
 # Current Outbreak Data
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 
 library(tidyverse)
 library(tibbletime)
@@ -35,11 +35,10 @@ cases <- china_province_data_cases %>%
 
 #cases.totals %>% select(Totals, China)
 
-plot(x=cases$Date,y=cases$China,type="o",pch=20,cex=.7)
+plot(x=cases$Date,y=cases$China,type="o",pch=20,cex=.7,log='y')
 
 ```
 
-# Deconvolution of case reports to derive ts of $I$ 
 
 ```{r}
 
@@ -63,7 +62,13 @@ make_df = function(deconvolutions, skip="none"){
 }
 ```
 
-There are four different stages of the outbreak. Pre-January 9, January 9 to January 18, January 19 to January 23, and post-January 23. These timeframes are defined by Paige in https://docs.google.com/document/d/1GpTvsoTZBWphn2tLbKHE5Z1ZE8RuD3caTHar-DqtqHc/edit?pli=1. The time between onset of symptoms and confirmation is distinct between these time frames. We deconvolve the curve three times for each of the time frames and concatenate them together. 
+# Deconvolution overview
+
+During the early stages of the outbreak, we were able to estimate the incubation period. Deconvolving the curve with just the incubation period is easy. However, if we use officially confirmed cases, we need to take into account the time between symptom onset and case confirmation. The distribution for this time changes throughout the early stages of the outbreak. Because there are two different time delays, we need two separate deconvolutions. First we will deconvolve the time variable portion, and then the incubation period.
+
+## Symptom-onset to case confirmation
+
+There are four different stages of the outbreak. Pre-January 9, January 9 to January 18, January 19 to January 23, and post-January 23. These timeframes are defined by Paige in https://docs.google.com/document/d/1GpTvsoTZBWphn2tLbKHE5Z1ZE8RuD3caTHar-DqtqHc/edit?pli=1. The time between onset of symptoms and confirmation is distinct between these time frames. We deconvolve the curve three times for each of the time frames and concatenate them together. Deconvolving these individually and concatenating them is imperfect, but given the amount of uncertainty surrounding the outbreak as a whole, it is sufficient for now. A rigorous solution for this is in the works.
 
 ```{r}
 # index 39 is January 08
@@ -104,7 +109,9 @@ for (i in 1:6) {
 ```
 
 
-Now the curve is set, giving six different estimations of the number of people beginning to show symptoms each day. Deconvolve each of the curves and use the average method. This time we exclude the Ridge regression, fourier filter, and frequency filter because they do not perform well in this truncated outbreak using this mean and standard deviation.
+## Symptom-onset to Infection
+
+Now we have a rough estimate of the number of people beginning to show symptoms each day. Deconvolution to get the number of people infected each day is straightforward. We will skip a number of different deconvolution methods because they are not reliable. Random requires a longer symptom-onset curve to get accurate infections, ridge is not good in this short of an outbreak with this mean/sd for the incubation period, fourier is not that great with a truncated infection curve, and neither does the frequency filter. We will deconvolve each of the curves from the previous deconvolution and plot the results. 
 
 ```{r}
 
@@ -124,11 +131,11 @@ for (i in 1:6) {
 }
 
 # First column contains the original curve, the subsequent columns contain an estimation of the infection curve
-plot(infection_curve[1:53,1], type='l', ylim=c(0,3000))
+plot(infection_curve[1:53,1], type='l', ylim=c(0.01,3000), log='y')
 for (i in 2:length(infection_curve[1,])) {
   lines(infection_curve[1:53,i], type='l')
 }
-lines(infection_curve[1:53,1], type='l', ylim=c(0,3000), col='RED')
+lines(infection_curve[1:53,1], type='l', ylim=c(0.01,3000), col='RED')
 
 #tmpresults <- deconvolve_single_curve(curve = china$cases, parms = parms)
 
@@ -153,7 +160,7 @@ lines(infection_curve[1:53,1], type='l', ylim=c(0,3000), col='RED')
 
 ```
 
-The first ~53 indices are a legitimate estimate. After that it becomes less acurate because of the deconvolution. Any sharp downward trend is likely due to errors from the truncated outbreak (run during the durition of the outbreak instead at the end looking back). Estimations should be good up until then, but not all the way to the last row of the dataframe. 
+Since the deconvolution backs up the symptom-onset curve an average of 5.6 days, the last 7-8 days of the infection curve are not accurate due to the curve being truncated. Any sharp downward trend towards the end of the outbreak is likely due to errors from the truncated outbreak (run during the duration of the outbreak instead at the end looking back). Estimations should be good up until then, but not all the way to the last row of the dataframe. 
 
 # TDAR
 
