@@ -776,7 +776,7 @@ deconvolve_infection_curves_random = function(symptom_onset_curves,
 #' deconvolve_infection_curve_random(easy_symptom_onset_curve, trials = 50, distribution = "lognorm", parms = c(15.3, 9.1))
 #'
 #' @export
-deconvolve_infection_curve_random = function(symptom_onset_curve, incubation_period, trials, distribution, parms)
+deconvolve_infection_curve_random = function(symptom_onset_curve, incubation_period, trials, distribution, parms, curves=FALSE)
 {
   duration = length(symptom_onset_curve)
   possible_infection_curves = data.frame(matrix(nrow = duration, ncol = 0))
@@ -800,6 +800,9 @@ deconvolve_infection_curve_random = function(symptom_onset_curve, incubation_per
   }
   estimated_infection_curve = average_possible_infection_curves(possible_infection_curves)
   #estimated_infection_curve_rounded = round_infection_curve(symptom_onset_curve, estimated_infection_curve)
+  if(curves=TRUE){
+    return(list(result=estimated_infection_curve, estimates=possible_infection_curves))
+  }
   return(estimated_infection_curve)
 }
 
