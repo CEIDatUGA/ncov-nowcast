@@ -1,17 +1,20 @@
-deconvolve_single_curve <- function(curve, parms, skip) {
+deconvolve_single_curve <- function(curve, parms, skip='') {
 
   # simple
   simple <- deconvolve_infection_curve_simple(curve, parms[1])
   
   # random
-  random <- deconvolve_infection_curve_random(
+  random_full <- deconvolve_infection_curve_random(
     curve,
     generate_incubation_period,
     trials = 35,
     distribution = "gamma",
-    parms = parms
+    parms = parms,
+    curves = TRUE
   )
 
+  random = random_full$result
+  
   # ridge
   incubation_matrix <- incubation_period_distribution_matrix(length(curve), 
                                                              distribution = distribution, 
@@ -54,6 +57,6 @@ deconvolve_single_curve <- function(curve, parms, skip) {
 
   average <- deconvolve_infection_curve_average(deconvolutions)
   
-  curves <- list(curve=curve, simple=simple, random=random, ridge=ridge, rl=rl, fourier=fourier, frequency=frequency, average=average)
+  curves <- list(curve=curve, simple=simple, random=random, random_estimates = random_full$estimates, ridge=ridge, rl=rl, fourier=fourier, frequency=frequency, average=average)
   return(curves)
 }
