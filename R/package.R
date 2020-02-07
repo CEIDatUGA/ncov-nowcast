@@ -800,11 +800,7 @@ deconvolve_infection_curve_random = function(symptom_onset_curve, incubation_per
   }
   estimated_infection_curve = average_possible_infection_curves(possible_infection_curves)
   #estimated_infection_curve_rounded = round_infection_curve(symptom_onset_curve, estimated_infection_curve)
-<<<<<<< HEAD
   if(curves==TRUE){
-=======
-  if(curves=TRUE){
->>>>>>> 55087db1f5afb13d83b5585e7940f82fde5a3cc4
     return(list(result=estimated_infection_curve, estimates=possible_infection_curves))
   }
   return(estimated_infection_curve)
