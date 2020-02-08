@@ -161,9 +161,9 @@ The data frame estimates has 20 estimates of the infection curve (down from 35 t
 
 ```{r warning=FALSE, message=FALSE}
 
-allcases$curve = NA; allcases$curve[1:58] = forecast$curve[1:58]
-allcases$upper = NA; allcases$upper[1:58] = forecast$upper[1:58]
-allcases$lower = NA; allcases$lower[1:58] = forecast$lower[1:58]
+allcases$curve = NA; allcases$curve[1:(length(forecast$curve)-10)] = forecast$curve[1:(length(forecast$curve)-10)]
+allcases$upper = NA; allcases$upper[1:(length(forecast$curve)-10)] = forecast$upper[1:(length(forecast$curve)-10)]
+allcases$lower = NA; allcases$lower[1:(length(forecast$curve)-10)] = forecast$lower[1:(length(forecast$curve)-10)]
 
 
 plot(x=allcases$Date,y=allcases$cases,col='RED',type="o",pch=20,cex=.7)
