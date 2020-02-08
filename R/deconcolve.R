@@ -7,7 +7,7 @@ deconvolve_single_curve <- function(curve, parms, skip='') {
   random_full <- deconvolve_infection_curve_random(
     curve,
     generate_incubation_period,
-    trials = 35,
+    trials = 20,
     distribution = "gamma",
     parms = parms,
     curves = TRUE

@@ -2,6 +2,7 @@
 title: "Backcasting with Deconvolution"
 author: "Eric Marty, Tim Wildauer"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
@@ -13,7 +14,7 @@ output:
 library(tidyverse)
 library(tibbletime)
 
-source('R/package.R'); source('R/deconcolve.R'); source('R/simple_tdar.R');
+source('R/package.R'); source('R/deconcolve.R'); source('R/simple_tdar.R'); source('R/new_package.R');
 
 ## also possible to link directly to google sheet. see mosaic::fetchGoogle(), requires publishing sheet
 china_province_data_cases <- read.csv("data/china_province_data_cases.csv",stringsAsFactors = FALSE)
@@ -25,146 +26,99 @@ cases <- china_province_data_cases %>%
   tibbletime::as_tbl_time(index=Date) %>% 
   mutate(China = rowSums(.[,-1],na.rm = TRUE))
 
-#cases.totals <- china_province_data_cases %>% 
-#  select(-Type) %>%
-#  filter(grepl("totals",Date)) %>% 
-#  rename(Totals = Date) %>% 
-#  mutate(China = rowSums(.[,-1],na.rm = TRUE))
-
-#cases.totals
-
-#cases.totals %>% select(Totals, China)
-
-plot(x=cases$Date,y=cases$China,type="o",pch=20,cex=.7,log='y')
-
-```
-
-
-```{r}
-
-# set up container
 
 china <- cases %>% select(Date, cases = China)
 
-# set December 01, 2019 as day 1
-allchina=c(rep(0, times=30), china[["cases"]])
+prefix <- data.frame(Date=seq(as.Date("2019-12-01"), as.Date("2019-12-28"), by="days"), cases=rep(0, times = 28))
 
-# Function for putting all decovolutions into a curve.
-make_df = function(deconvolutions, skip="none"){
-  results=cbind(simple=deconvolutions$simple)
-  if(!("random" %in% skip)) results=cbind(results, random=deconvolutions$random)
-  if(!("ridge" %in% skip)) results=cbind(results, ridge=deconvolutions$ridge)
-  if(!("rl" %in% skip)) results=cbind(results, rl=deconvolutions$rl)
-  if(!("fourier" %in% skip)) results=cbind(results, fourier=deconvolutions$fourier)
-  if(!("frequency" %in% skip)) results=cbind(results, frequency=deconvolutions$frequency)
-  if(!("average" %in% skip)) results=cbind(results, average=deconvolutions$average)
-  return(results)
-}
+allcases <- rbind(prefix, china)
+parms <- data.frame(mean=rep(0, times=length(allcases[,1])), sd=rep(0, times=length(allcases[,1])))
+allcases <- cbind(allcases, parms)
+
+plot(x=allcases$Date,y=allcases$cases,type="o",pch=20,cex=.7,log='y')
+
 ```
 
 # Deconvolution overview
 
 During the early stages of the outbreak, we were able to estimate the incubation period. Deconvolving the curve with just the incubation period is easy. However, if we use officially confirmed cases, we need to take into account the time between symptom onset and case confirmation. The distribution for this time changes throughout the early stages of the outbreak. Because there are two different time delays, we need two separate deconvolutions. First we will deconvolve the time variable portion, and then the incubation period.
 
-## Symptom-onset to case confirmation
+# Confirmed Cases to Symptom Onset
 
-There are four different stages of the outbreak. Pre-January 9, January 9 to January 18, January 19 to January 23, and post-January 23. These timeframes are defined by Paige in https://docs.google.com/document/d/1GpTvsoTZBWphn2tLbKHE5Z1ZE8RuD3caTHar-DqtqHc/edit?pli=1. The time between onset of symptoms and confirmation is distinct between these time frames. We deconvolve the curve three times for each of the time frames and concatenate them together. Deconvolving these individually and concatenating them is imperfect, but given the amount of uncertainty surrounding the outbreak as a whole, it is sufficient for now. A rigorous solution for this is in the works.
+There are four different stages of the outbreak. Pre-January 9, January 9 to January 18, January 19 to January 23, and post-January 23. These timeframes are defined by Paige in https://docs.google.com/document/d/1GpTvsoTZBWphn2tLbKHE5Z1ZE8RuD3caTHar-DqtqHc/edit?pli=1. The time between onset of symptoms and confirmation is distinct between these time frames.
 
 ```{r}
-# index 39 is January 08
-# index 40 is January 09
-# index 49 is January 18
-# index 50 is January 19
-# index 53 is January 22
-# index 54 is January 23
-parms <- c(6.57,4.78)
-distribution <- "gamma"
-janpre09=deconvolve_single_curve(curve=allchina, parms = parms, skip="fourier")
-janpre09 = make_df(janpre09, skip = "fourier")
-parms <- c(4.77,3.11)
-jan09_19=deconvolve_single_curve(curve=allchina, parms = parms, skip="fourier")
-jan09_19 = make_df(jan09_19, skip = "fourier")
-parms <- c(0.812,1,12)
-jan19_23=deconvolve_single_curve(curve=allchina, parms = parms, skip="fourier")
-jan19_23 = make_df(jan19_23, skip = "fourier")
 
-final_curve = rbind(janpre09[1:39,], jan09_19[40:49,], jan19_23[50:53,], cbind( allchina[54:length(allchina)]
-                                                                               ,allchina[54:length(allchina)]
-                                                                               ,allchina[54:length(allchina)]
-                                                                               ,allchina[54:length(allchina)]
-                                                                               ,allchina[54:length(allchina)]
-                                                                               #,allchina[54:length(allchina)]
-                                                                               ,allchina[54:length(allchina)]))
-
-
-# Breaking the deconvolution into stages like this is not perfect and creates jagged edges. Run a moving average to smooth out the sharp edges.
-weights <- (1/9)*c(1, 2, 3, 2, 1)
-for (i in 1:6) {
-  final_curve[,i] = c(0,0,stats::filter(final_curve[,i]
-                                        , filter=weights
-                                        , sides=2)[3:(length(final_curve[,i])-2)]
-                      , final_curve[,i][(length(final_curve[,i])-1):length(final_curve[,i])])
+for (row in 1:length(allcases[,1])) {
+  if(allcases[row,"Date"] < as.Date("2020-01-09")){
+    allcases[row,"mean"] = 6.57
+    allcases[row,"sd"] = 4.78
+  }
+  else if(allcases[row,"Date"] < as.Date("2020-01-19")){
+    allcases[row,"mean"] = 4.77
+    allcases[row,"sd"] = 3.11
+  }
+  else if(allcases[row,"Date"] < as.Date("2020-01-24")){
+    allcases[row,"mean"] = 0.812
+    allcases[row,"sd"] = 1.12
+  }
+  else {
+    allcases[row,"mean"] = 0
+    allcases[row,"sd"] = 0
+  }
 }
+
+```
+
+We can use a combination of the ridge regression transition matrix and random deconvolution to deconvolve the time-variant convolution. This method has not been tested yet, but it seems to work. 
+
+```{r cache=TRUE}
+
+deconvolve_infection_curve_random_tv = function(casemix){
+  matrix = incubation_period_distribution_matrix_tv(casemix)
+  estimates = rep(0, times=length(matrix[1,]))
+  
+  incubation_period = generate_incubation_period
+  distribution = "lognorm"
+  for (distro in 1:length(matrix[1,])) {
+    for (day in 1:length(matrix[,1])) {
+      if(casemix$cases[day]!=0 & matrix[day, distro]!=0){
+        for (patient in 1:casemix$cases[day]) {
+          parms = c(casemix$mean[distro], casemix$sd[distro])
+          if(sum(parms)!=0){
+            estimated_infection_day = day - incubation_period(distribution, parms = c(casemix$mean[distro], casemix$sd[distro]))
+          }
+          else{
+            estimated_infection_day = day
+          }
+          if(estimated_infection_day <= 0)
+          {
+            estimated_infection_day = 1
+          }
+          estimates[estimated_infection_day] = estimates[estimated_infection_day] + matrix[day, distro]/sum(matrix[day,])
+        }
+      }
+    }
+  }
+  return(estimates)
+}
+
+estimates = deconvolve_infection_curve_random_tv(allcases)
+allcases$estimate = round_infection_curve(allcases$cases, estimates)
+
+plot(allcases$cases,col='RED',type="o",pch=20,cex=.7)
+lines(allcases$estimate,type="o",pch=20,cex=.7)
 
 ```
 
 
 ## Symptom-onset to Infection
 
-Now we have a rough estimate of the number of people beginning to show symptoms each day. Deconvolution to get the number of people infected each day is straightforward. We will skip a number of different deconvolution methods because they are not reliable. Random requires a longer symptom-onset curve to get accurate infections, ridge is not good in this short of an outbreak with this mean/sd for the incubation period, fourier is not that great with a truncated infection curve, and neither does the frequency filter. We will deconvolve each of the curves from the previous deconvolution and plot the results. 
+Now we have a rough estimate of the number of people beginning to show symptoms each day. Deconvolution to get the number of people infected each day is straightforward.  
 
 ```{r}
 
 #standard model inputs
-shape=6.2
-mean=5.6
-scale=mean/shape
-sd=sqrt(shape*scale^2)
-
-parms <- c(mean,sd)
-distribution <- "gamma"
-
-infection_curve = as.data.frame(allchina, ncol=1)
-for (i in 1:6) {
-  new=deconvolve_single_curve(final_curve[,i], parms = parms, skip = c("random","ridge","fourier","frequency"))
-  infection_curve=cbind(infection_curve, make_df(new, skip = c("random","ridge","fourier","frequency")))
-}
-
-# First column contains the original curve, the subsequent columns contain an estimation of the infection curve
-plot(infection_curve[1:53,1], type='l', ylim=c(0.01,3000), log='y')
-for (i in 2:length(infection_curve[1,])) {
-  lines(infection_curve[1:53,i], type='l')
-}
-lines(infection_curve[1:53,1], type='l', ylim=c(0.01,3000), col='RED')
-
-#tmpresults <- deconvolve_single_curve(curve = china$cases, parms = parms)
-
-#china$I <- tmpresults$average
-
-#plot(x=china$Date,y=china$cases, type="o",pch=20,cex=.7,main='Wuhan Outbreak Curves')
-#lines(x=china$Date,y=china$I, type = 'o', pch=20,cex=.7,col="red")
-#text(mean(china$Date),y=2000,labels="confirmed cases",col=1)
-#text(mean(china$Date),y=1800,labels="Infected class I",col=2)
-
-#save(tmpresults, file = "backcasting_I.rdata") #Rachel edit, to save results to file
-
-# for(method in 1:length(deconvolutions)){
-#         lines(deconvolutions[[method]],col=method+2,type="l")
-# }
-# text(5,y=360,labels="simple",col=3)
-# text(5,y=340,labels="random",col=4)
-# text(5,y=320,labels="ridge",col=5)
-# text(5,y=300,labels="rl",col=6)
-# text(5,y=290,labels="freq",col=7)
-
-
-```
-
-Since the deconvolution backs up the symptom-onset curve an average of 5.6 days, the last 7-8 days of the infection curve are not accurate due to the curve being truncated. Any sharp downward trend towards the end of the outbreak is likely due to errors from the truncated outbreak (run during the duration of the outbreak instead at the end looking back). Estimations should be good up until then, but not all the way to the last row of the dataframe. 
-
-# Forecast Prep
-
-```{r}
 shape=6.2
 mean=5.6
 scale=mean/shape
@@ -182,7 +136,15 @@ confidence_interval <- function(vector, interval) {
   result <- c("lower" = vec_mean - error, "upper" = vec_mean + error)
   return(result)
 }
-results = deconvolve_single_curve(allchina, parms)
+results = deconvolve_single_curve(allcases$estimate, parms)
+
+```
+
+# Forecast Prep
+
+Since the deconvolution backs up the symptom-onset curve an average of 5.6 days, the last 8-10 days of the infection curve are not accurate due to the curve being truncated. Any sharp downward trend towards the end of the outbreak is likely due to errors from the truncated outbreak (run during the duration of the outbreak instead at the end looking back). Estimations should be good up until then, but not all the way to the last row of the dataframe. 
+
+```{r }
 estimates = results$random_estimates
 forecast = data.frame(curve = results$random)
 forecast$lower = NA
@@ -195,4 +157,29 @@ for (i in 1:length(estimates[,1])) {
 
 ```
 
-The data frame estimates has 35 estimates of the infection curve. If you would like to use that, wonderful. If not, the data frame forecast has the curve estimate with a 95% confidence interval.
+The data frame estimates has 20 estimates of the infection curve (down from 35 to make the CI wider). If you would like to use that, wonderful. If not, the data frame forecast has the curve estimate with a 95% confidence interval.
+
+```{r warning=FALSE, message=FALSE}
+
+allcases$curve = NA; allcases$curve[1:58] = forecast$curve[1:58]
+allcases$upper = NA; allcases$upper[1:58] = forecast$upper[1:58]
+allcases$lower = NA; allcases$lower[1:58] = forecast$lower[1:58]
+
+
+plot(x=allcases$Date,y=allcases$cases,col='RED',type="o",pch=20,cex=.7)
+lines(x=allcases$Date,y=allcases$estimate,type="o",pch=20,cex=.7)
+lines(x=allcases$Date,y=allcases$upper,type="o",pch=20,cex=.7,col='GRAY')
+lines(x=allcases$Date,y=allcases$lower,type="o",pch=20,cex=.7,col='GRAY')
+lines(x=allcases$Date,y=allcases$curve,type="o",pch=20,cex=.7,col='BLUE')
+text(x=as.Date("2019-12-10"),y=3600,labels="Case Confirmations",col='RED')
+text(x=as.Date("2019-12-10"),y=3400,labels="Symptom Onset",col='BLACK')
+text(x=as.Date("2019-12-10"),y=3200,labels="Infections",col='BLUE')
+text(x=as.Date("2019-12-10"),y=3000,labels="95% CI",col='GRAY')
+
+plot(x=allcases$Date,y=allcases$cases,col='RED',type="o",pch=20,cex=.7,log = 'y')
+lines(x=allcases$Date,y=allcases$estimate,type="o",pch=20,cex=.7)
+lines(x=allcases$Date,y=allcases$upper,type="o",pch=20,cex=.7,col='GRAY')
+lines(x=allcases$Date,y=allcases$lower,type="o",pch=20,cex=.7,col='GRAY')
+lines(x=allcases$Date,y=allcases$curve,type="o",pch=20,cex=.7,col='BLUE')
+```
+
