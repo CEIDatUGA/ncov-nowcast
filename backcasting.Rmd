@@ -162,10 +162,37 @@ lines(infection_curve[1:53,1], type='l', ylim=c(0.01,3000), col='RED')
 
 Since the deconvolution backs up the symptom-onset curve an average of 5.6 days, the last 7-8 days of the infection curve are not accurate due to the curve being truncated. Any sharp downward trend towards the end of the outbreak is likely due to errors from the truncated outbreak (run during the duration of the outbreak instead at the end looking back). Estimations should be good up until then, but not all the way to the last row of the dataframe. 
 
-# TDAR
+# Forecast Prep
 
 ```{r}
-#get_tdar(china$cases)
-#get_tdar(china$I)
+shape=6.2
+mean=5.6
+scale=mean/shape
+sd=sqrt(shape*scale^2)
+
+parms <- c(mean,sd)
+distribution <- "gamma"
+
+confidence_interval <- function(vector, interval) {
+  vector=as.numeric(vector[1,])
+  vec_sd <- sd(vector)
+  n <- length(vector)
+  vec_mean <- mean(vector)
+  error <- qt((interval + 1)/2, df = n - 1) * vec_sd / sqrt(n)
+  result <- c("lower" = vec_mean - error, "upper" = vec_mean + error)
+  return(result)
+}
+results = deconvolve_single_curve(allchina, parms)
+estimates = results$random_estimates
+forecast = data.frame(curve = results$random)
+forecast$lower = NA
+forecast$upper = NA
+for (i in 1:length(estimates[,1])) {
+  ci = confidence_interval(estimates[i,1:length(estimates[1,])],0.95)
+  forecast[i,"lower"] = ci[1]
+  forecast[i,"upper"] = ci[2]
+}
+
 ```
 
+The data frame estimates has 35 estimates of the infection curve. If you would like to use that, wonderful. If not, the data frame forecast has the curve estimate with a 95% confidence interval.
