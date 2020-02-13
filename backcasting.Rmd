@@ -14,7 +14,7 @@ output:
 library(tidyverse)
 library(tibbletime)
 
-source('R/package.R'); source('R/deconcolve.R'); source('R/simple_tdar.R'); source('R/new_package.R');
+source('R/package.R'); source('R/deconcolve.R'); source('R/simple_tdar.R'); source('R/package_tv.R');
 
 ## also possible to link directly to google sheet. see mosaic::fetchGoogle(), requires publishing sheet
 china_province_data_cases <- read.csv("data/china_province_data_cases.csv",stringsAsFactors = FALSE)
@@ -32,7 +32,9 @@ china <- cases %>% select(Date, cases = China)
 prefix <- data.frame(Date=seq(as.Date("2019-12-01"), as.Date("2019-12-28"), by="days"), cases=rep(0, times = 28))
 
 allcases <- rbind(prefix, china)
-parms <- data.frame(mean=rep(0, times=length(allcases[,1])), sd=rep(0, times=length(allcases[,1])))
+parms <- data.frame(mean=rep(0, times=length(allcases[,1])),
+                    sd=rep(0, times=length(allcases[,1])),
+                    distribution=rep("lognorm", times=length(allcases[,1])))
 allcases <- cbind(allcases, parms)
 
 plot(x=allcases$Date,y=allcases$cases,type="o",pch=20,cex=.7,log='y')
@@ -63,8 +65,8 @@ for (row in 1:length(allcases[,1])) {
     allcases[row,"sd"] = 1.12
   }
   else {
-    allcases[row,"mean"] = 0
-    allcases[row,"sd"] = 0
+    allcases[row,"mean"] = 0.2
+    allcases[row,"sd"] = 0.45
   }
 }
 
@@ -74,37 +76,13 @@ We can use a combination of the ridge regression transition matrix and random de
 
 ```{r cache=TRUE}
 
-deconvolve_infection_curve_random_tv = function(casemix){
-  matrix = incubation_period_distribution_matrix_tv(casemix)
-  estimates = rep(0, times=length(matrix[1,]))
-  
-  incubation_period = generate_incubation_period
-  distribution = "lognorm"
-  for (distro in 1:length(matrix[1,])) {
-    for (day in 1:length(matrix[,1])) {
-      if(casemix$cases[day]!=0 & matrix[day, distro]!=0){
-        for (patient in 1:casemix$cases[day]) {
-          parms = c(casemix$mean[distro], casemix$sd[distro])
-          if(sum(parms)!=0){
-            estimated_infection_day = day - incubation_period(distribution, parms = c(casemix$mean[distro], casemix$sd[distro]))
-          }
-          else{
-            estimated_infection_day = day
-          }
-          if(estimated_infection_day <= 0)
-          {
-            estimated_infection_day = 1
-          }
-          estimates[estimated_infection_day] = estimates[estimated_infection_day] + matrix[day, distro]/sum(matrix[day,])
-        }
-      }
-    }
-  }
-  return(estimates)
-}
-
 estimates = deconvolve_infection_curve_random_tv(allcases)
-allcases$estimate = round_infection_curve(allcases$cases, estimates)
+incubation_matrix = incubation_period_distribution_matrix_tv(outbreak_parms = allcases, rl = TRUE)
+final_estimate = deconvolve_infection_curve_rl(symptom_onset_curve = allcases$cases,
+                                               matrix = incubation_matrix,
+                                               estimate = estimates)
+
+allcases$estimate = round_infection_curve(allcases$cases, final_estimate)
 
 plot(allcases$cases,col='RED',type="o",pch=20,cex=.7)
 lines(allcases$estimate,type="o",pch=20,cex=.7)
