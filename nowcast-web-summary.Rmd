@@ -242,7 +242,7 @@ p_Exposed_logy <- p_Exposed %>% plotly::layout(yaxis = list(type = "log", range=
 p_Exposed_logy
 ```
 
-## Fit the exposed curve and forecast
+## Fit the exposed curve and forecast exposure curve
 
 ```{r, echo=TRUE, message = FALSE, warning = FALSE}
 
@@ -257,15 +257,15 @@ exposed.forecast <- forecast::forecast(exposed.model.tvar$fitted,na.tail) #10 da
 
 database$exposed.fit <- exposed.model.tvar$fitted %>% pad_na(lag, front = TRUE) %>% pad_na(na.tail)
 
-database$exposed.fcast.mean <- exposed.forecast$mean %>% pad_na(timespan - na.tail, front = TRUE)
-database$exposed.fcast.upper95 <- exposed.forecast$upper[,'95%'] %>% pad_na(timespan - na.tail, front = TRUE)
-database$exposed.fcast.lower95 <- exposed.forecast$lower[,'95%'] %>% pad_na(timespan - na.tail, front = TRUE)
-
-```
+database$exposed.fcast.mean <- exposed.forecast$mean %>% pmax(0) %>% 
+  pad_na(timespan - na.tail, front = TRUE)
+database$exposed.fcast.upper95 <- exposed.forecast$upper[,'95%'] %>% pmax(0) %>%
+  pad_na(timespan - na.tail, front = TRUE)
+database$exposed.fcast.lower95 <- exposed.forecast$lower[,'95%'] %>% pmax(0) %>%
+  pad_na(timespan - na.tail, front = TRUE)
 
 ### Plot
 
-```{r, echo=TRUE, message = FALSE, warning = FALSE}
 col.cases <- 'rgba(0, 0, 0, .75)'
 col.symptomatic <- 'rgba(230, 7, 7, .75)'
 col.exposed <- 'rgba(7, 164, 181, 0.75)'
@@ -289,14 +289,14 @@ p_Exposed <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'sc
                       fillcolor = col.exposed.ci) %>% 
   plotly::add_trace(y = ~exposed.fit, 
                     name = 'exposed (fitted)', mode = 'lines',
-                    line = list(color = col.fcast, width = 1, dash = 'dot')) %>% 
+                    line = list(color = col.exposed, width = 1, dash = 'dot')) %>% 
   plotly::add_trace(y = ~exposed.fcast.mean, 
-                    name = 'exposed (forecast)', mode = 'lines',
-                    line = list(color = col.fcast)) %>% 
+                    name = 'exposed (forecast mean)', mode = 'lines',
+                    line = list(color = col.exposed, dash = 'dot')) %>% 
   plotly::add_ribbons(ymin = ~exposed.fcast.lower95, ymax = ~exposed.fcast.upper95,
-                      name = 'forecast 95% confidence', mode='lines',
-                      line = list(color = col.fcast, width = .5),
-                      fillcolor = col.fcast.ci
+                      name = 'exposed (forecast 95% confidence)', mode='lines',
+                      line = list(color = col.exposed, width = .5),
+                      fillcolor = col.exposed.ci
                       )
   
 p_Exposed_logy <- p_Exposed %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
@@ -304,6 +304,73 @@ p_Exposed_logy
 ```
 
 
+## Estimate outbreak size
 
+The mean esimated outbreak size at each time $t$ is the sum of the sympotmatic curve ($I$ class) and the mean estimated exposed curve ($E$ class) or mean forcested exposed curve.
 
+For now, "upper 95" esimated outbreak size at each time $t$ is the sum of the sympotmatic curve ($I$ class) and the upper 95% exposed curve ($E$ class), or upper 95% forecasted exposed curve.
+
+Ditto for lower 95.
+
+Probably need to do a proper forecast of the sums rather than just sum the respective confidence interval bounds.
+
+```{r, echo=TRUE, message = FALSE, warning = FALSE}
+
+database <- database %>% 
+  mutate(nowcast.mean = rowSums(
+    dplyr::select(., symptomatic, exposed.mean, exposed.fcast.mean), na.rm = TRUE)
+    ) %>% 
+  mutate(nowcast.upper95 = rowSums(
+    dplyr::select(., symptomatic, exposed.upper95, exposed.fcast.upper95), na.rm = TRUE)
+    ) %>% 
+  mutate(nowcast.lower95 = rowSums(
+    dplyr::select(., symptomatic, exposed.lower95, exposed.fcast.lower95), na.rm = TRUE)
+    )
+
+# plot
+
+col.cases <- 'rgba(0, 0, 0, .75)'
+col.symptomatic <- 'rgba(230, 7, 7, .75)'
+col.exposed <- 'rgba(7, 164, 181, 0.75)'
+col.exposed.ci <- 'rgba(7, 164, 181, 0.25)'
+col.fcast <- 'rgba(7, 7, 230, 0.75)'
+col.fcast.ci <- 'rgba(7, 7, 230, 0.25)'
+
+p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~symptomatic, 
+                    name = 'symptomatic (estimated)', mode = 'lines',
+                    line = list(color = col.symptomatic)) %>%
+  plotly::add_trace(y = ~exposed.mean, 
+                    name = 'exposed (mean)', mode = 'lines',
+                    line = list(color = col.exposed)) %>% 
+  plotly::add_ribbons(ymin = ~exposed.lower95, ymax = ~exposed.upper95,
+                      name = 'exposed 95% confidence', mode='lines',
+                      line = list(color = col.exposed, width=.5),
+                      fillcolor = col.exposed.ci) %>% 
+  plotly::add_trace(y = ~exposed.fit, 
+                    name = 'exposed (fitted)', mode = 'lines',
+                    line = list(color = col.exposed, width = 1, dash = 'dot')) %>% 
+  plotly::add_trace(y = ~exposed.fcast.mean, 
+                    name = 'exposed (forecast mean)', mode = 'lines',
+                    line = list(color = col.exposed, dash = 'dot')) %>% 
+  plotly::add_ribbons(ymin = ~exposed.fcast.lower95, ymax = ~exposed.fcast.upper95,
+                      name = 'exposed (forecast 95% confidence)', mode='lines',
+                      line = list(color = col.exposed, width = .5),
+                      fillcolor = col.exposed.ci
+                      ) %>% 
+  plotly::add_trace(y = ~nowcast.mean, 
+                    name = 'nowcast (mean)', mode = 'lines',
+                    line = list(color = col.fcast, dash = 'dot')) %>% 
+  plotly::add_ribbons(ymin = ~nowcast.lower95, ymax = ~nowcast.upper95,
+                      name = 'nowcast (95% confidence)', mode='lines',
+                      line = list(color = col.fcast, width = .5),
+                      fillcolor = col.fcast.ci
+                      )
+  
+p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+p_nowcast_logy
+```
 
