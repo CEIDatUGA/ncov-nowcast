@@ -1,0 +1,185 @@
+---
+title: "Nowcasting the current size of the COVID-19 outbreak in China"
+author: "Tim Wildauer, Rachel Mercaldo, Eric Marty, John Drake"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(tibbletime)
+library(padr)
+library(tvReg)
+library(forecast)
+source('R/package.R')
+source('R/deconcolve.R')
+source('R/simple_tdar.R')
+source('R/package_tv.R')
+source('R/nowcast.R')
+
+```
+
+## {.tabset .tabset-fade}
+
+### Model
+
+We wish to estimate (nowcast) the total current size of the COVID-19 outbreak, i.e. the total number of non-isolated individuals currently infected with SARS-CoV2.
+
+We need to estimate this number from the current count of confirmed cases of COVID-19. The count of confirmed cases does not include those who are symptomatic but whose cases have not been confirmed, those who have been exposed and cary the virus but are not yet symptomatic, and asymptomatic cases (those who are exposed but never develop symptoms).
+
+In order to estimate outbreak size, we assume a model that supposes that at each point in time $t$, every individual in the population may be classified according to one of the following mutually exclusive segments, in accordance with the modified SEIR stochastic model used in <http://2019-coronavirus-tracker.com/stochastic.html>:
+
+$S(t)$ Susceptible individuals
+$E(t)$ Exposed individuals in the community (Individuals with a latent infection, not yet able to transmit)
+$I(t)$ Infectious individuals in the community
+$H(t)$ Individuals with newly confirmed cases (hospitalized or otherwise removed from the community but still infectious)
+$R(t)$ Discharged (and no longer infectious) individuals
+
+The total outbreak size $Q(t) = E(t) + I(t) + H(t)$
+
+We are given only a time series of new case reports $C(t)$. Case reporting is assumed to occur when individuals move into the $H$ class. If we consider that isolation and case reporting occurs immediately upon hospitalization, we can assume a simplified SEIR model with no $H$ class, and the total outbreak size $Q(t) = E(t) + I(t)$. (If in other situations it is determined that there is a lag between hospitalization and case reporting, as may be the case early in an outbreak, then we could reintroduce the $H$ class.)
+
+Here, we lay out a procedure to estimate these time varying populations from a time series of confirmed cases $C(t)$ using deconvolution-based backcasting and time series forecasting. We apply our method to the outbreak in China.
+
+#### Model details
+
+**Detectable and undetectable cases**
+
+Exposed cases are either detectable $E_d$ or detectable $E_u$ according to $q(t)$ and $a$. Note, detection parameters $q(t)$ and $a$ are applied not to the case reports, but to the exposed and infectious classes, considering that a certain percentage of these are "detectable" (i.e. eventually detected and represented in the times series of case reports $C(t)$. So $E_u(t) = q(t)E_d(t) $ and $E(t) = E_u(t) + E_d(t)$.
+
+Infectious cases are also detected $I_d$ or undetected $I_u$, and $I(t) = I_u(t) + I_d(t)$. Undetected infectious cases depend on the proportion of cases that are asymptomatic $a$, an optionally a detection probability $q(t)$, and coefficient of relative transmissibility $c$.
+
+#### Model parameters (US) 
+
+```{r params, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = 0.346, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="exponential", mean=2.67),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
+
+Detectibility of cases may characterized as a detection probability $q(t)$, the proportion of cases that are asymptomatic $a$, or some combination thereof. It is not clear if we can disentangle $q(t)$ and $a$ from each other.
+
+For our US model, we opt not to use $q(t)$ and to use $a$ alone, on the simplifying assumption that asymptomatic cases are not detected, and symptomatic cases are detected with porbability $q=1.0$
+
+**Detection probability** $q(t)$ (China)
+
+For China, we assumed in [J.M. Drake & P. Rohani. A stochastic model for the transmission of 2019-nCov in Wuhan](http://2019-coronavirus-tracker.com/stochastic-model.html) that the case detection probability to be time varying, with $q(t)$ assumed to have been quite low before the opening of fever clinics on 9 January, 2020, and to have stepped up after January 9. Drake and Rohani have roughly estimated the baseline case detection rate to be $q_0 = 0.11$, and the post January 9 rate to be $q_1 = 0.98$.
+
+For our US model, we set $q = 1$ and express underreporting solely in terms of Proportion of cases that are asymptomatic $a$ (see below).
+
+**Proportion of cases that are asymptomatic** $a$
+
+Based on testing of passengers on the Princes Cruises ship in Yokohama, Japan, Mizumoto *et al.* estimated that the percentage of cases that are asymptomatic $a$ is 34.6% (95% CrI: 29.4%–39.8%) [^1]. 
+
+[^1] : Kenji Mizumoto, Katsushi Kagaya, Alexander Zarebski, Gerardo Chowell. Estimating the Asymptomatic Ratio of 2019 Novel Coronavirus onboard the Princess Cruises Ship, 2020. medRxiv preprint. <https://doi.org/10.1101/2020.02.20.20025866>
+
+**Transmissability of undetectable cases** $c$
+
+The coefficient of relative transmissibility $c$ represents the transmissibility of undetected cases relative to detected cases. Shaman *et al.* ()[^2] have estimated that the transmissibility in undetected cases is approximately 52% of that in detected cases. 
+
+[^2] : Shaman *et al.*, personal communication with John Drake
+
+However, $c$ may be difficult to disentangle from reporting probability $q(t)$ and $a$. We therefore make a simplifying assumption that symptomatic and asymptomatic cases are equally transmissible, equivalent to setting $c = 1$.
+
+**Natural infectious period** $\frac{1}{\gamma_0}$
+
+The natural infectious period $\frac{1}{\gamma_0}$ in the absence of containment is assumed to be 7 days.
+
+**Effective infectious period** $\frac{1}{\gamma}$
+
+The effective infectious period (the period between symptom onset and isolation) $\frac{1}{\gamma}$ is time dependent and affected by containment efforts. In the SEIR model, $\frac{1}{\gamma}$ is the period between symptom onset and case report.
+
+**Incubation period**
+
+Becker has estimated the period between exposure and symptom onset for China to be $\frac{1}{\sigma}$ to be 6.4 days[^2].
+
+[^2] : Becker (citation needed)
+
+For the US, our own analysis suggests a mean incubation period of 5 days.
+
+### Data
+
+**US Case Reports by State**
+
+US data are maintained by [CEID](https://ceid.uga.edu) and available  [here](https://docs.google.com/spreadsheets/d/10NYNf4UX7R_nNdM-jkbo7A5SGkB8sUVMIiqU7e_-miU/edit#gid=0).
+
+Data are compiled from <https://en.wikipedia.org/wiki/2020_coronavirus_pandemic_in_the_United_States>, which is updated by anonymous contributors.
+
+We aim to update our dataset daily.
+
+```{r data, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+# read data directly to google sheet.
+
+sheet <- "https://docs.google.com/spreadsheets/d/10NYNf4UX7R_nNdM-jkbo7A5SGkB8sUVMIiqU7e_-miU/edit#gid=0"
+
+US <- googlesheets4::sheets_read(sheet)
+
+names(US)[1] <- "Date"
+
+US <- US %>% 
+  rename_all(list(~make.names(.))) %>% 
+  mutate_if(is.list, fixcolumns) %>% 
+  mutate(Date = as.Date(Date)) %>% 
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(US = rowSums(.[,-1],na.rm = TRUE))
+
+```
+
+### US
+
+Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
+
+```{r US, echo=TRUE, message = FALSE, warning = FALSE, cache = TRUE}
+US.all <- US %>% select(Date, cases = US) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+plot_nowcast_from_case_reports(US.all)
+```
+
+### GA
+
+Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
+
+```{r GA, echo=TRUE, message = FALSE, warning = FALSE, cache = TRUE}
+GA <- US %>% select(Date, cases = GA) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+plot_nowcast_from_case_reports(GA)
+```
+### WA
+
+Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
+
+```{r WA, echo=TRUE, message = FALSE, warning = FALSE, cache = TRUE}
+WA <- US %>% select(Date, cases = WA) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+plot_nowcast_from_case_reports(WA)
+```
+
+### CA
+
+Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
+
+```{r CA, echo=TRUE, message = FALSE, warning = FALSE, cache = TRUE}
+CA <- US %>% select(Date, cases = CA) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+plot_nowcast_from_case_reports(CA)
+```
+
+## NY
+
+Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
+
+```{r NY, echo=TRUE, message = FALSE, warning = FALSE, cache = TRUE}
+NY <- US %>% select(Date, cases = NY) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+plot_nowcast_from_case_reports(NY)
+```

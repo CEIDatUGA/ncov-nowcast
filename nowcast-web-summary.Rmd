@@ -18,53 +18,7 @@ source('R/package.R')
 source('R/deconcolve.R')
 source('R/simple_tdar.R')
 source('R/package_tv.R')
-
-# functions
-
-# function to trim NA's from a vector
-trim_na <- function(x) {x[!is.na(x)]}
-
-# function to pad a vector with NA's
-pad_na <- function(x,n,front=FALSE) {
-  if(front==TRUE){
-    x <- c(rep.int(NA,n),x)
-  }else{
-    length(x) <- length(x)+n
-  }
-  return(x)
-}
-
-# function to replace tail of vector or dataframe with NA's
-tail_na <- function(data, tail, columns=NULL) {
-  d <- data
-  if (is.vector(d)) {
-    n <- length(d)
-    # replace(data, (n-tail):n, NA)
-    d[(n-tail[1]+1):n] <- NA
-  }else{
-    if (is.data.frame(d)) {
-      n <- nrow(d)
-      if(!is.null(columns)){c <- columns}else{c <- 1:length(data)}
-      d[(n-tail[1]+1):n,c] <- NA
-    }
-  }
-  return(d)
-}
-
-# function to calculate confidence intervals across rows of a dataframe
-rowwise_confidence_intervals <- function(df,interval) {
-  out <- list()
-  for (i in 1:nrow(df)) {
-    v <- unlist(df[i,])
-    v_sd <- sd(v)
-    v_n <- length(v)
-    v_mean <- mean(v)
-    error <- qt((interval + 1)/2, df = v_n - 1) * v_sd / sqrt(v_n)
-    out$lower[i] <- v_mean - error
-    out$upper[i] <- v_mean + error
-  }
-  return(out)
-}
+source('R/nowcast.R')
 
 ```
 
@@ -134,8 +88,8 @@ The period between symptom onset and hospitalization $\frac{1}{\gamma}$ is time 
 The natural infectious period $\frac{1}{\gamma_0}$ in the absence of containment is assumed to be 7 days.
 
 ```{r}
-mean.infectious.period <- 7
-gamma0_fcn <- function() {1/mean.infectious.period}
+mean.infectious.period <- 7 # natural infectious period
+gamma0_fcn <- function() {1/mean.infectious.period} # natural recovery rate
 ```
 
 **Incubation period**
@@ -229,11 +183,6 @@ p_Cases_logy
 ## Using deconvolution to backcast the number symptomatic and exposed.
 
 
-
-
-If we know the incubation period, we can then reconstruct the time series of first exposure (class $E$ in and SEIR model) by a second deconvolution step. The incubation period of COVID-19 has been estimated.
-
-
 ### Deconvolution of time series of cases to recreate time series of symptom onset
 
 We reconstruct a time series of symptom onset $I_s(t)$ from the time series of new case reports $C(t)$ using deconvolution. 
@@ -257,7 +206,6 @@ stages <- tibble(
 stages
 ```
 
-First, we set up a single database to hold the original data, parameters, and all derived time series: 
 
 ```{r database, echo=TRUE, message = FALSE, warning = FALSE}
 # set up container
@@ -273,7 +221,7 @@ remove(stage)
 timespan <- length(database$Date)
 ```
 
-We use a combination of the ridge regression transition matrix and random deconvolution to deconvolve the time-variant convolution. This method has not been tested yet, but it seems to work. 
+Tim: "We use a combination of the ridge regression transition matrix and random deconvolution to deconvolve the time-variant convolution. This method has not been tested yet, but it seems to work."
 
 ```{r, echo=TRUE, message = FALSE, warning = FALSE}
 estimates <- deconvolve_infection_curve_random_tv(as.data.frame(database))
@@ -417,10 +365,6 @@ This would give
 $$
 I_u = cI_d \left( \frac{1}{q(1-a)} - 1 \right)
 $$
-
-
-
-<!-- We currently do not account for underreporting of symptomatic cases.  If the level of underreporting of sympotmatic cases is known, we could compensate by adjusting the symptomatic onset curve accordingly. UPDATE: Actually, q accounts for this.-->
 
 ```{r}
 database <- database %>% 
@@ -718,6 +662,8 @@ p_nowcast_logy
 
 ## Estimating the Effective Reproduction Number $R_{eff}$
 
+### Method 1 (not completely correct)
+
 We can estimate $R_{eff}$ by using the ODEs for the SEIR model, and estimating the slope of $E$ ($\frac{dE}{dt}$).
 
 $$
@@ -806,3 +752,25 @@ dash
 ```
 
 TODO: Find out why R_eff going below zero.  Is the calc right?
+
+### Method 2: 
+
+Use a generalized linear chain trick? - YES
+
+Hurtado, P.J. and A.S. Kirosingh. Generalizations of the ‘Linear Chain Trick’: incorporating more flexible dwell time distributions into mean field ODE models. Journal of Mathematical Biology volume 79, pages1831–1883(2019)
+<https://link.springer.com/article/10.1007%2Fs00285-019-01412-w>
+
+Use delay differential equations? - NO
+
+$$
+\frac{d}{dt}E(t) = \beta S(t)I(t) - \beta S(t-\frac{1}{\sigma})I(t-\frac{1}{\sigma}) \\
+~ \\
+R_{eff} = \frac{\beta S(t)I(t)}{\gamma} \\
+~ \\
+\text{Solve for }\beta S(t)I(t) :\\
+\beta S(t)I(t) = ? \\
+~ \\
+* \beta S I = \frac{dE}{dt}+ \sigma E  \\
+* R_{eff} = \frac{\frac{dE}{dt}+ \sigma E}{\gamma} \\
+$$
+
