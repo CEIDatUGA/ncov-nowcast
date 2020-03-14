@@ -118,301 +118,301 @@ WY <- get_US_nowcast("WY")
 
 ### USA
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(US.all)
 ```
 
 ### AK
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r AK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r AK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(AK)
 ```
 
 ### AL
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r AL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r AL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(AL)
 ```
 
 ### AR
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r AR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r AR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(AR)
 ```
 
 ### AZ
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r AZ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r AZ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(AZ)
 ```
 
 ### CA
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r CA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r CA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(CA)
 ```
 
 ### CO
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r CO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r CO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(CO)
 ```
 
 ### CT
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r CT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r CT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(CT)
 ```
 
 ### DC
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r DC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r DC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(DC)
 ```
 
 ### DE
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r DE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r DE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(DE)
 ```
 
 ### FL
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r FL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r FL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(FL)
 ```
 
 ### GA
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r GA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r GA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(GA)
 ```
 
 ### HI
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r HI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r HI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(HI)
 ```
 
 ### IA
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r IA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r IA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(IA)
 ```
 
 ### IL
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r IL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r IL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(IL)
 ```
 
 ### IN
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r IN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r IN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(IN)
 ```
 
 ### KS
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r KS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r KS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(KS)
 ```
 
 ### KY
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r KY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r KY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(KY)
 ```
 
 ### LA
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r LA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r LA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(LA)
 ```
 
 ### MA
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r MA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MA)
 ```
 
 ### MD
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r MD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MD)
 ```
 
 ### ME
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r ME, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r ME, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(ME)
 ```
 
 ### MI
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r MI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MI)
 ```
 
 ### MN
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r MN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MN)
 ```
 
 ### MO
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r MO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MO)
 ```
 
 ### MS
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r MS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MS)
 ```
 
 ### MT
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r MT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MT)
 ```
 
 ### NC
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r NC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(NC)
 ```
 
 ### ND
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r ND, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r ND, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(ND)
 ```
 
 ### NE
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r NE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(NE)
 ```
 
 ### NH
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r NH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(NH)
 ```
 
 ### NJ
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NJ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r NJ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(NJ)
 ```
 
 ### NM
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r NM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(NM)
 ```
 
 ### NV
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NV, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r NV, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(NV)
 ```
 
 ### NY
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r NY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(NY)
 ```
 
 ### OH
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r OH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r OH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(OH)
 ```
 
 ### OK
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r OK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r OK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(OK)
 ```
 
 ### OR
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r OR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r OR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(OR)
 ```
 
 ### PA
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r PA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r PA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(PA)
 ```
 
 ### RI
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r RI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r RI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(RI)
 ```
 
 ### SC
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r SC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r SC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(SC)
 ```
 
 ### SD
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r SD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r SD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(SD)
 ```
 
 ### TN
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r TN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r TN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(TN)
 ```
 
 ### TX
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r TX, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r TX, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(TX)
 ```
 
 ### UT
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r UT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r UT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(UT)
 ```
 
 ### VA
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r VA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r VA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(VA)
 ```
 
 ### VT
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r VT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r VT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(VT)
 ```
 
 ### WA
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r WA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r WA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(WA)
 ```
 
 ### WI
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r WI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r WI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(WI)
 ```
 
 ### WY
 Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r WY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r WY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(WY)
 ```
 
