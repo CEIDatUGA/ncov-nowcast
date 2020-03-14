@@ -326,40 +326,52 @@ plot_nowcast_from_case_reports <- function(database) {
   
   p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
                                name = 'Case notifications', mode = 'lines',
-                               line = list(color = col.cases, width = data.lwd)
+                               line = list(color = col.cases, width = data.lwd),
+                               legendgroup = 'group1'
                                ) %>% 
     plotly::add_trace(y = ~I, 
                       name = 'Symptomatic cases in the community', mode = 'lines',
-                      line = list(color = col.I, width = data.lwd)) %>%
+                      line = list(color = col.I, width = data.lwd),
+                      legendgroup = 'group2') %>%
     plotly::add_trace(y = ~I.forecast.mean, 
                       name = '(forecast average)', mode = 'lines',
-                      line = list(color = col.I, width = mean.lwd, dash = 'dot')) %>% 
+                      line = list(color = col.I, width = mean.lwd, dash = 'dot'),
+                      legendgroup = 'group2') %>% 
     plotly::add_ribbons(ymin = ~I.forecast.lower95, ymax = ~I.forecast.upper95,
                         name = '(95% confidence)', mode='lines',
                         line = list(color = col.I, width = ci.lwd),
-                        fillcolor = col.I.ci) %>% 
+                        fillcolor = col.I.ci,
+                        legendgroup = 'group2') %>% 
     
     plotly::add_trace(y = ~E, 
                       name = 'Latent cases in the community', mode = 'lines',
-                      line = list(color = col.E, width = data.lwd)) %>%
+                      line = list(color = col.E, width = data.lwd),
+                      legendgroup = 'group3') %>%
     plotly::add_trace(y = ~E.forecast.mean, 
                       name = '(forecast average)', mode = 'lines',
-                      line = list(color = col.E, width = mean.lwd, dash = 'dot')) %>% 
+                      line = list(color = col.E, width = mean.lwd, dash = 'dot'),
+                      legendgroup = 'group3') %>% 
     plotly::add_ribbons(ymin = ~E.forecast.lower95, ymax = ~I.forecast.upper95,
                         name = '(95% confidence)', mode='lines',
                         line = list(color = col.E, width = ci.lwd),
-                        fillcolor = col.E.ci) %>% 
+                        fillcolor = col.E.ci,
+                        legendgroup = 'group3') %>% 
     
     plotly::add_trace(y = ~nowcast.mean, 
                       name = 'Total cases in the community', mode = 'lines',
-                      line = list(color = col.nowcast, width = data.lwd, dash = 'dot')) %>% 
+                      line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
+                      legendgroup = 'group1') %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower95, ymax = ~nowcast.upper95,
                         name = '(95% confidence)', mode='lines',
                         line = list(color = col.nowcast, width = ci.lwd),
-                        fillcolor = col.nowcast.ci
-    )
+                        fillcolor = col.nowcast.ci,
+                        legendgroup = 'group1')
+  
   p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)),
-                                                 legend = list(x = 0.1, y = 0.9))
+                                                 # legend = list()
+                                                 legend = list(x = 0, y = -0.2, 
+                                                               orientation = 'h')
+                                                 )
   p_nowcast_logy
 }
 
