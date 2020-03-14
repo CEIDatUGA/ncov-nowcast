@@ -325,36 +325,36 @@ plot_nowcast_from_case_reports <- function(database) {
   data.lwd <- 2
   
   p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
-                               name = 'confirmed', mode = 'lines',
+                               name = 'Case notifications', mode = 'lines',
                                line = list(color = col.cases, width = data.lwd)
                                ) %>% 
     plotly::add_trace(y = ~I, 
-                      name = 'I', mode = 'lines',
+                      name = 'Symptomatic cases in the community', mode = 'lines',
                       line = list(color = col.I, width = data.lwd)) %>%
     plotly::add_trace(y = ~I.forecast.mean, 
-                      name = 'I (forecast mean)', mode = 'lines',
+                      name = '(forecast average)', mode = 'lines',
                       line = list(color = col.I, width = mean.lwd, dash = 'dot')) %>% 
     plotly::add_ribbons(ymin = ~I.forecast.lower95, ymax = ~I.forecast.upper95,
-                        name = 'I (forecast 95% confidence)', mode='lines',
+                        name = '(95% confidence)', mode='lines',
                         line = list(color = col.I, width = ci.lwd),
                         fillcolor = col.I.ci) %>% 
     
     plotly::add_trace(y = ~E, 
-                      name = 'E', mode = 'lines',
+                      name = 'Latent cases in the community', mode = 'lines',
                       line = list(color = col.E, width = data.lwd)) %>%
     plotly::add_trace(y = ~E.forecast.mean, 
-                      name = 'E (forecast mean)', mode = 'lines',
+                      name = '(forecast average)', mode = 'lines',
                       line = list(color = col.E, width = mean.lwd, dash = 'dot')) %>% 
     plotly::add_ribbons(ymin = ~E.forecast.lower95, ymax = ~I.forecast.upper95,
-                        name = 'E (forecast 95% confidence)', mode='lines',
+                        name = '(95% confidence)', mode='lines',
                         line = list(color = col.E, width = ci.lwd),
                         fillcolor = col.E.ci) %>% 
     
     plotly::add_trace(y = ~nowcast.mean, 
-                      name = 'nowcast (mean)', mode = 'lines',
+                      name = 'Total cases in the community', mode = 'lines',
                       line = list(color = col.nowcast, width = data.lwd, dash = 'dot')) %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower95, ymax = ~nowcast.upper95,
-                        name = 'nowcast (95% confidence)', mode='lines',
+                        name = '(95% confidence)', mode='lines',
                         line = list(color = col.nowcast, width = ci.lwd),
                         fillcolor = col.nowcast.ci
     )
