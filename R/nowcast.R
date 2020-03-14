@@ -369,8 +369,7 @@ plot_nowcast_from_case_reports <- function(database) {
   
   p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)),
                                                  # legend = list()
-                                                 legend = list(x = 0, y = -0.2, 
-                                                               orientation = 'h')
+                                                 showlegend = FALSE
                                                  )
   p_nowcast_logy
 }

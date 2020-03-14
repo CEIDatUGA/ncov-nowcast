@@ -416,3 +416,5 @@ Nowcast (outbreak size) = E + I = the number of non-isolated infected individual
 plot_nowcast_from_case_reports(WY)
 ```
 
+## ![](nowcast-legend.png)
+
