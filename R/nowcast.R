@@ -203,21 +203,31 @@ tvar_forecast_to_present <- function(curve,lag=1) {
   trimmed.length <- length(curve.trimmed)
   forecast.length <- length(curve)-trimmed.length
   
-  curve.model.tvar <- tvReg::tvAR(curve.trimmed, 
+  # log curve
+  log.curve.trimmed <- log(curve.trimmed)
+  
+  # replace infinities
+  log.curve.trimmed[is.infinite(log.curve.trimmed)] <- 0
+
+  log.curve.model.tvar <- tvReg::tvAR(log.curve.trimmed, 
                                   p = lag,  # number of lags
                                   type = "none",  # model does not contain intercept
                                   est="ll", # "local linear" non parametric estimation method
                                   tkernel = "Gaussian")
-
-    curve.forecast <- forecast::forecast(curve.model.tvar$fitted,forecast.length)
   
-  forecast <- tibble(fit = curve.model.tvar$fitted %>% pad_na(lag, front = TRUE) %>% 
+  log.curve.forecast <- forecast::forecast(log.curve.model.tvar$fitted,forecast.length)
+  
+  # antilog fit 
+  # antilog forecast
+  
+  forecast <- tibble(fit = exp(log.curve.model.tvar$fitted) %>% 
+                       pad_na(lag, front = TRUE) %>% 
                        pad_na(forecast.length),
-                     mean = curve.forecast$mean %>% pmax(0) %>% 
+                     mean = exp(log.curve.forecast$mean) %>% pmax(0) %>% 
                        pad_na(trimmed.length, front = TRUE),
-                     upper95 = curve.forecast$upper[,'95%'] %>% pmax(0) %>% 
+                     upper95 = exp(log.curve.forecast$upper[,'95%']) %>% pmax(0) %>% 
                        pad_na(trimmed.length, front = TRUE),
-                     lower95 = curve.forecast$lower[,'95%'] %>% pmax(0) %>%
+                     lower95 = exp(log.curve.forecast$lower[,'95%']) %>% pmax(0) %>%
                        pad_na(trimmed.length, front = TRUE)
                      )
   forecast
@@ -228,8 +238,8 @@ tvar_forecast_to_present <- function(curve,lag=1) {
 nowcast_from_case_reports <- function(casereports, params) {
   database <- casereports
   database$q <- US.params$q
-  database$q <- US.params$a
-  database$q <- US.params$c
+  database$a <- US.params$a
+  database$c <- US.params$c
   
   # I linelist
   I.linelist <- backward_simulate_linelist(dates = database$Date,
