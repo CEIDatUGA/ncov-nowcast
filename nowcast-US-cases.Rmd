@@ -35,27 +35,55 @@ US.params <- list(admin = "US", # state or country
 
 <!-- Get case reports for US states -->
 ```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-# read data directly to google sheet.
+# read data directly from google sheet.
 
-sheet <- "https://docs.google.com/spreadsheets/d/10NYNf4UX7R_nNdM-jkbo7A5SGkB8sUVMIiqU7e_-miU/edit#gid=0"
+# sheet <- "https://docs.google.com/spreadsheets/d/10NYNf4UX7R_nNdM-jkbo7A5SGkB8sUVMIiqU7e_-miU/edit#gid=0"
+# 
+# US <- googlesheets4::sheets_read(sheet)
+# 
+# US <- US %>% 
+#   rename_all(list(~make.names(.))) %>% 
+#   mutate_if(is.list, fixcolumns) %>% 
+#   mutate(Date = as.Date(Date)) %>% 
+#   padr::pad(start_val = as.Date("2019-12-01")) %>%
+#   replace(., is.na(.), 0) %>%
+#   tibbletime::as_tbl_time(index=Date) %>% 
+#   mutate(US = rowSums(.[,-1],na.rm = TRUE))
 
-US <- googlesheets4::sheets_read(sheet)
 
-names(US)[1] <- "Date"
+# Scrape Wikipedia
 
-US <- US %>% 
+library(rvest)
+url <- "https://en.wikipedia.org/wiki/2020_coronavirus_pandemic_in_the_United_States"
+
+
+
+US.wikipedia <- url %>%
+  html() %>%
+  html_nodes(xpath='//*[@id="mw-content-text"]/div/div[28]/table/tbody/tr[2]/td/table[1]') %>%
+  html_table(fill = TRUE)
+US.wikipedia <- US.wikipedia[[1]]
+names(US.wikipedia) <- US.wikipedia[1,]
+US.wikipedia <- US.wikipedia[2:(nrow(US.wikipedia)-5),1:(ncol(US.wikipedia)-6)]
+
+US.wikipedia$Date <- paste(US.wikipedia$Date, "2020") %>% 
+  as.Date("%b %d %Y")
+
+US <- US.wikipedia %>%
+  mutate_if(sapply(US.wikipedia, is.character), as.numeric) %>% 
   rename_all(list(~make.names(.))) %>% 
-  mutate_if(is.list, fixcolumns) %>% 
-  mutate(Date = as.Date(Date)) %>% 
   padr::pad(start_val = as.Date("2019-12-01")) %>%
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date) %>% 
   mutate(US = rowSums(.[,-1],na.rm = TRUE))
 
+# Remove last row
+# US.wikipedia <- US.wikipedia[-nrow(US.wikipedia),]
+
 ```
 
 <!-- calculate nowcasts for US states -->
-```{r nowcasts, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+```{r nowcasts, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 
 get_US_nowcast <- function(state) {
   US %>% select(Date, cases = state) %>% 
