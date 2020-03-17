@@ -56,8 +56,6 @@ US.params <- list(admin = "US", # state or country
 library(rvest)
 url <- "https://en.wikipedia.org/wiki/2020_coronavirus_pandemic_in_the_United_States"
 
-
-
 US.wikipedia <- url %>%
   html() %>%
   html_nodes(xpath='//*[@id="mw-content-text"]/div/div[28]/table/tbody/tr[2]/td/table[1]') %>%

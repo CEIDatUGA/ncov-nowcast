@@ -1,0 +1,352 @@
+---
+title: ""
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(tibbletime)
+library(padr)
+library(tvReg)
+library(forecast)
+source('R/package.R')
+source('R/deconcolve.R')
+source('R/simple_tdar.R')
+source('R/package_tv.R')
+source('R/nowcast.R')
+
+```
+
+<!-- Get simultations for US states -->
+```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+US.sim <- read_csv("nowcast-validation-1.csv") %>% 
+  rename(Date = X1) %>% 
+  mutate(Date = as.Date("2019-11-30") + Date) %>% 
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date)
+
+US.sim2 <- read_csv("nowcast-validation-2.csv") %>% 
+  rename(Date = X1) %>% 
+  mutate(Date = as.Date("2019-11-30") + Date) %>% 
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date)
+
+US.sim3 <- read_csv("nowcast-validation-3.csv") %>% 
+  rename(Date = X1) %>% 
+  mutate(Date = as.Date("2019-11-30") + Date) %>% 
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date)
+
+US.sim4 <- read_csv("nowcast-validation-4.csv") %>% 
+  rename(Date = X1) %>% 
+  mutate(Date = as.Date("2019-11-30") + Date) %>% 
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date)
+
+US.sim5 <- read_csv("nowcast-validation-5.csv") %>% 
+  rename(Date = X1) %>% 
+  mutate(Date = as.Date("2019-11-30") + Date) %>% 
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date)
+
+US.sim5b <- read_csv("nowcast-validation-Scenario-5.csv") %>% 
+  rename(Date = X1) %>% 
+  mutate(Date = as.Date("2019-11-30") + Date) %>% 
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date)
+
+US.sim6 <- read_csv("nowcast-validation-Scenario-6.csv") %>% 
+  rename(Date = X1) %>% 
+  mutate(Date = as.Date("2019-11-30") + Date) %>% 
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date)
+
+US.sim7 <- read_csv("nowcast-validation-Scenario-7.csv") %>% 
+  rename(Date = X1) %>% 
+  mutate(Date = as.Date("2019-11-30") + Date) %>% 
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date)
+
+```
+
+# Simulation 1
+
+```{r, echo = TRUE}
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = 0.346, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="exponential", mean=2.67),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+US.sim.nowcast <- US.sim %>% select(Date, cases = case.notifications) %>% 
+  mutate(sim.unobserved = US.sim$unobserved) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+  
+maxy <- max(US.sim.nowcast$cases, US.sim.nowcast$unobserved, US.sim.nowcast$nowcast.mean, US.sim.nowcast$nowcast.upper95)
+plot(x=US.sim.nowcast$Date, y=US.sim.nowcast$cases, type = "l", xlim=range(US.sim.nowcast$Date),ylim=c(0,maxy))
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$sim.unobserved,col="blue",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.mean,col="purple",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.lower95,col="purple",type="l", lty = "dotted")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.upper95,col="purple",type="l", lty = "dotted")
+title(main = "simulation 1")
+
+plot(x = US.sim.nowcast$nowcast.mean, y = US.sim.nowcast$sim.unobserved, type = "l", asp="1")
+lines(x = US.sim.nowcast$nowcast.upper95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+lines(x = US.sim.nowcast$nowcast.lower95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+abline(0, 1)
+title(main = "simulation 1")
+```
+
+# Simulation 2
+
+```{r, echo = TRUE}
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = 0.346, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="exponential", mean=2.67),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+US.sim.nowcast <- US.sim2 %>% select(Date, cases = case.notifications) %>% 
+  mutate(sim.unobserved = US.sim2$unobserved) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+  
+maxy <- max(US.sim.nowcast$cases, US.sim.nowcast$unobserved, US.sim.nowcast$nowcast.mean, US.sim.nowcast$nowcast.upper95)
+plot(x=US.sim.nowcast$Date, y=US.sim.nowcast$cases, type = "l", xlim=range(US.sim.nowcast$Date),ylim=c(0,maxy))
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$sim.unobserved,col="blue",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.mean,col="purple",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.lower95,col="purple",type="l", lty = "dotted")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.upper95,col="purple",type="l", lty = "dotted")
+title(main = "simulation 2")
+
+plot(x = US.sim.nowcast$nowcast.mean, y = US.sim.nowcast$sim.unobserved, type = "l", asp="1")
+lines(x = US.sim.nowcast$nowcast.upper95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+lines(x = US.sim.nowcast$nowcast.lower95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+abline(0, 1)
+title(main = "simulation 2")
+```
+
+
+# Simulation 3
+
+```{r, echo = TRUE}
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = 0.346, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="exponential", mean=2.67),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+
+US.sim.nowcast <- US.sim3 %>% select(Date, cases = case.notifications) %>% 
+  mutate(sim.unobserved = US.sim3$unobserved) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+  
+
+maxy <- max(US.sim.nowcast$cases, US.sim.nowcast$unobserved, US.sim.nowcast$nowcast.mean, US.sim.nowcast$nowcast.upper95)
+plot(x=US.sim.nowcast$Date, y=US.sim.nowcast$cases, type = "l", xlim=range(US.sim.nowcast$Date),ylim=c(0,maxy))
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$sim.unobserved,col="blue",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.mean,col="purple",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.lower95,col="purple",type="l", lty = "dotted")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.upper95,col="purple",type="l", lty = "dotted")
+title(main = "simulation 3")
+
+plot(x = US.sim.nowcast$nowcast.mean, y = US.sim.nowcast$sim.unobserved, type = "l", asp="1")
+lines(x = US.sim.nowcast$nowcast.upper95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+lines(x = US.sim.nowcast$nowcast.lower95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+abline(0, 1)
+title(main = "simulation 3")
+
+```
+
+
+# Simulation 4
+```{r, echo = TRUE}
+
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = 0, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="exponential", mean=2.67),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+US.sim.nowcast <- US.sim4 %>% select(Date, cases = case.notifications) %>% 
+  mutate(sim.unobserved = US.sim4$unobserved) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+  
+
+maxy <- max(US.sim.nowcast$cases, US.sim.nowcast$unobserved, US.sim.nowcast$nowcast.mean, US.sim.nowcast$nowcast.upper95)
+plot(x=US.sim.nowcast$Date, y=US.sim.nowcast$cases, type = "l", xlim=range(US.sim.nowcast$Date),ylim=c(0,maxy))
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$sim.unobserved,col="blue",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.mean,col="purple",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.lower95,col="purple",type="l", lty = "dotted")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.upper95,col="purple",type="l", lty = "dotted")
+title(main = "simulation 4")
+plot(x = US.sim.nowcast$nowcast.mean, y = US.sim.nowcast$sim.unobserved, type = "l", asp="1")
+lines(x = US.sim.nowcast$nowcast.upper95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+lines(x = US.sim.nowcast$nowcast.lower95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+abline(0, 1)
+title(main = "simulation 4")
+```
+
+# Simulation 5
+```{r, echo = TRUE}
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = 0, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="exponential", mean=2.67),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+US.sim.nowcast <- US.sim5 %>% select(Date, cases = case.notifications) %>% 
+  mutate(sim.unobserved = US.sim5$unobserved) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+  
+
+maxy <- max(US.sim.nowcast$cases, US.sim.nowcast$unobserved, US.sim.nowcast$nowcast.mean, US.sim.nowcast$nowcast.upper95)
+plot(x=US.sim.nowcast$Date, y=US.sim.nowcast$cases, type = "l", xlim=range(US.sim.nowcast$Date),ylim=c(0,maxy))
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$sim.unobserved,col="blue",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.mean,col="purple",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.lower95,col="purple",type="l", lty = "dotted")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.upper95,col="purple",type="l", lty = "dotted")
+title(main = "simulation 5")
+plot(x = US.sim.nowcast$nowcast.mean, y = US.sim.nowcast$sim.unobserved, type = "l", asp="1")
+lines(x = US.sim.nowcast$nowcast.upper95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+lines(x = US.sim.nowcast$nowcast.lower95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+abline(0, 1)
+title(main = "simulation 5")
+
+```
+
+# Simulation 5b
+```{r, echo = TRUE}
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = 0, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="exponential", mean=2.67),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+US.sim.nowcast <- US.sim5b %>% select(Date, cases = case.notifications) %>% 
+  mutate(sim.unobserved = US.sim5b$unobserved) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+  
+
+maxy <- max(US.sim.nowcast$cases, US.sim.nowcast$unobserved, US.sim.nowcast$nowcast.mean, US.sim.nowcast$nowcast.upper95)
+plot(x=US.sim.nowcast$Date, y=US.sim.nowcast$cases, type = "l", xlim=range(US.sim.nowcast$Date),ylim=c(0,maxy))
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$sim.unobserved,col="blue",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.mean,col="purple",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.lower95,col="purple",type="l", lty = "dotted")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.upper95,col="purple",type="l", lty = "dotted")
+title(main = "simulation 5b")
+plot(x = US.sim.nowcast$nowcast.mean, y = US.sim.nowcast$sim.unobserved, type = "l", asp="1")
+lines(x = US.sim.nowcast$nowcast.upper95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+lines(x = US.sim.nowcast$nowcast.lower95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+abline(0, 1)
+title(main = "simulation 5b")
+```
+
+# Simulation 6
+```{r, echo = TRUE}
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = 0, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="exponential", mean=2.67),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+US.sim.nowcast <- US.sim6 %>% select(Date, cases = case.notifications) %>% 
+  mutate(sim.unobserved = US.sim6$unobserved) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+
+maxy <- max(US.sim.nowcast$cases, US.sim.nowcast$unobserved, US.sim.nowcast$nowcast.mean, US.sim.nowcast$nowcast.upper95)
+plot(x=US.sim.nowcast$Date, y=US.sim.nowcast$cases, type = "l", xlim=range(US.sim.nowcast$Date),ylim=c(0,maxy))
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$sim.unobserved,col="blue",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.mean,col="purple",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.lower95,col="purple",type="l", lty = "dotted")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.upper95,col="purple",type="l", lty = "dotted")
+title(main = "simulation 6")
+plot(x = US.sim.nowcast$nowcast.mean, y = US.sim.nowcast$sim.unobserved, type = "l", asp="1")
+lines(x = US.sim.nowcast$nowcast.upper95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+lines(x = US.sim.nowcast$nowcast.lower95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+abline(0, 1)
+title(main = "simulation 6")
+
+```
+
+
+# simulation 7
+
+```{r, echo = TRUE}
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = .346, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="gamma", mean=4.4, shape=1.9816403),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+US.sim.nowcast <- US.sim7 %>% select(Date, cases = case.notifications) %>% 
+  mutate(sim.unobserved = US.sim7$unobserved) %>% 
+  tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+  
+
+maxy <- max(US.sim.nowcast$cases, US.sim.nowcast$unobserved, US.sim.nowcast$nowcast.mean, US.sim.nowcast$nowcast.upper95)
+
+plot(x=US.sim.nowcast$Date, y=US.sim.nowcast$cases, type = "l", xlim=range(US.sim.nowcast$Date),ylim=c(0,maxy))
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$sim.unobserved,col="blue",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.mean,col="purple",type="l")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.lower95,col="purple",type="l", lty = "dotted")
+lines(x=US.sim.nowcast$Date, y=US.sim.nowcast$nowcast.upper95,col="purple",type="l", lty = "dotted")
+title(main = "simulation 7")
+plot(x = US.sim.nowcast$nowcast.mean, y = US.sim.nowcast$sim.unobserved, type = "l", asp="1")
+lines(x = US.sim.nowcast$nowcast.upper95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+lines(x = US.sim.nowcast$nowcast.lower95, y = US.sim.nowcast$sim.unobserved, type = "l", lty="dotted")
+abline(0, 1, lty="dashed")
+title(main = "simulation 7")
+
+```
+
