@@ -58,7 +58,7 @@ url <- "https://en.wikipedia.org/wiki/2020_coronavirus_pandemic_in_the_United_St
 
 US.wikipedia <- url %>%
   html() %>%
-  html_nodes(xpath='//*[@id="mw-content-text"]/div/div[28]/table/tbody/tr[2]/td/table[1]') %>%
+  html_nodes(xpath='//*[@id="mw-content-text"]/div/div[21]/table/tbody/tr[2]/td/table') %>%
   html_table(fill = TRUE)
 US.wikipedia <- US.wikipedia[[1]]
 names(US.wikipedia) <- US.wikipedia[1,]
@@ -76,7 +76,7 @@ US <- US.wikipedia %>%
   mutate(US = rowSums(.[,-1],na.rm = TRUE))
 
 # Remove last row
-# US.wikipedia <- US.wikipedia[-nrow(US.wikipedia),]
+US.wikipedia <- US.wikipedia[-nrow(US.wikipedia),]
 
 ```
 

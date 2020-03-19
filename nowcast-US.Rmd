@@ -50,6 +50,17 @@ The sum of the Latent and Symptomatic curves and/or their forecasted curves give
 <!-- **Natural infectious period** $\frac{1}{\gamma_0}$ -->
 
 <!-- The natural infectious period $\frac{1}{\gamma_0}$ in the absence of containment is assumed to be 7 days. -->
+<!-- Set params for US -->
+```{r params, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+US.params <- list(admin = "US", # state or country
+                    q = 1, # Detection probability
+                    a = 0.346, # Proportion of cases that are asymptomatic
+                    c = 1, # Transmissability of undetectable cases
+                    effective.infectious.period = list(dist="exponential", mean=2.67),
+                    infectious.period = list(dist="exponential", mean=7),
+                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
+                    )
+```
 
 
 ```{r params, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}

@@ -320,7 +320,7 @@ title(main = "simulation 6")
 ```{r, echo = TRUE}
 US.params <- list(admin = "US", # state or country
                     q = 1, # Detection probability
-                    a = .346, # Proportion of cases that are asymptomatic
+                    a = 0, # Proportion of cases that are asymptomatic
                     c = 1, # Transmissability of undetectable cases
                     effective.infectious.period = list(dist="gamma", mean=4.4, shape=1.9816403),
                     infectious.period = list(dist="exponential", mean=7),

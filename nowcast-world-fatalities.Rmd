@@ -1,0 +1,133 @@
+---
+title: ""
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(tibbletime)
+library(padr)
+library(tvReg)
+library(forecast)
+source('R/package.R')
+source('R/deconcolve.R')
+source('R/simple_tdar.R')
+source('R/package_tv.R')
+source('R/nowcast.R')
+
+```
+
+<!-- Get fatalities reports for US states -->
+```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+# read data directly from google sheet.
+
+sheets_file <- "https://docs.google.com/spreadsheets/d/1SC28cM52m6s1gTJutpvFxadT9GGu-li90tsqkGuaM48/edit#gid=219891324"
+sheets_tab <- "Cumulative fatalities reported by country"
+  
+cum.fatalities <- googlesheets4::sheets_read(ss = sheets_file, sheet = sheets_tab) %>%
+  dplyr::select(-Sources, -Contributor) %>% 
+  rename_all(list(~make.names(.))) %>%
+  # mutate_if(is.list, fixcolumns) %>%
+  mutate(Date = as.Date(Date)) %>%
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>%
+  mutate(World = rowSums(.[,-1],na.rm = TRUE))
+
+cum.fatalities.diff <- cum.fatalities %>% select(-Date) %>% 
+  as.matrix() %>% diff() %>% as_tibble()
+
+# New deaths by day for all countries
+fatalities <- bind_rows(cum.fatalities[1,-1],cum.fatalities.diff) %>% bind_cols(cum.fatalities[,1],.)
+
+# New deaths by day for the US
+fatalities.US <- fatalities %>% dplyr::select(Date, deaths = US)
+  
+```
+
+<!-- A skew normal distribution is used due to a few negative reporting to death intervals.  -->
+
+<!-- The univariate skew normal distribution has a density function that can be written -->
+
+<!-- $$f(y)=2\phi(y)\Phi(\alpha y)$$ -->
+
+<!-- where  -->
+<!-- $\alpha$ is the shape parameter. Here,$\phi$ is the standard normal density and $\Phi$ its cumulative distribution function. -->
+
+<!-- When $\alpha=0$ the result is a standard normal distribution. When $\alpha=1$ it models the distribution of the maximum of two independent standard normal variates. When the absolute value of the shape parameter increases the skewness of the distribution increases. The limit as the shape parameter tends to positive infinity results in the folded normal distribution or half normal distribution. When the shape parameter changes its sign, the density is reflected about  y=0. -->
+
+<!-- The mean of the distribution is  -->
+<!-- $$\mu=\alpha\sqrt 2/(\pi (1+\alpha^2))$$ -->
+
+<!-- and these are returned as the fitted values. The variance of the distribution is $1−\mu^2$. The Newton Raphson algorithm is used unless the nsimEIM argument is used. -->
+
+
+```{r, include = FALSE}
+# distribution of case-reporting-to-fatalities (US Data)
+library(sn)
+csv <- 'https://raw.githubusercontent.com/CEIDatUGA/ncov-parameters/master/data/US%20COVID20%20Cases%20-%20data.csv?token=ADVPF4E6GKCQHV3MMXIMFN26PKWJ4'
+
+data.us <- read.csv(csv)
+data.us$Date_death <- as.Date(as.character(data.us$Date_death ), format= "%Y-%m-%d")
+data.us$Date_reported <- as.Date(as.character(data.us$Date_reported ), format= "%Y-%m-%d")
+
+data.us.death <- data.us %>% dplyr::select(State, Date_reported, Date_death) %>%
+  tidyr::drop_na() %>%
+  dplyr::mutate(rep_period = as.numeric(Date_death - Date_reported))
+
+fit <-  sn::selm(data.us.death$rep_period ~ 1, family = "SN")
+summary(fit, param.type="CP")
+summary(fit, param.type="DP")
+plot(fit)
+
+fit@param$dp
+fit@param$cp
+
+# mean <- fit@param$cp['mean']
+# location <- fit@param$dp['xi']
+# shape <- fit@param$dp['alpha']
+# scale <- fit@param$dp['omega']
+```
+
+<!-- Set params for US -->
+```{r params, echo=TRUE, message = FALSE, warning = FALSE, cache = TRUE}
+US.params <- list(admin = "US", # state or country
+                  # q = 1, # Detection probability
+                  # a = 0.346, # Proportion of cases that are asymptomatic # not used
+                  # c = 1, # Transmissability of undetectable cases
+                  # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf
+                  CFR = .009, 
+                  # effective.infectious.period = list(dist="exponential", mean=2.67), # our analysis, not used
+                  infectious.period = list(dist="exponential", mean=7), # accepted value
+                  incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942), # out analysis of US data
+                  # from US data (our analysis) (not used)
+                  report.to.death.period = list(dist="skewnormal", mean = 0.6123151, sd = 3.1429762,
+                                                location = -2.388990, 
+                                                scale = -2.388990, 
+                                                shape = 1.728359),
+                  # from China data: lognormal distribution with a 
+                  # location parameter of 2.84 and a scale parameter of 0.52 
+                  # (Jung et al.) https://doi.org/10.3390/jcm9020523 
+                  onset.to.death.period = list(dist="lognormal", mean = 19.9, sd = 11.4)
+                  )
+```
+
+<!-- calculate nowcast for US -->
+```{r nowcasts, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+US.nowcast <- nowcast_from_deaths_with_onset_to_death(deathreports = fatalities.US, US.params)
+
+```
+
+
+Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
+```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_death_reports(US.nowcast)
+```
+
+![](nowcast-legend-deaths.png)
+

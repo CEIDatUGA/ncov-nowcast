@@ -77,18 +77,32 @@ backward_simulate_linelist <- function(dates, counts, interval) {
 
   if(is.numeric(interval)){
     interval <- interval[1]
-    get_intervals <- function(x,interval) {
-      rep(x,interval)
+    get_intervals <- function(x, interval) {
+      rep(x, interval)
     }
   }else{
     if(interval$dist == "exponential") {
-      get_intervals <- function(x,interval) {
-        rexp(x,rate=1/interval$mean)
+      get_intervals <- function(x, interval) {
+        rexp(x, rate = 1/interval$mean)
       }
     }
     if(interval$dist == "gamma") {
       get_intervals <- function(x,interval) {
-        rgamma(x,shape=interval$shape,scale=interval$mean/interval$shape)
+        rgamma(x, shape = interval$shape, scale = interval$mean/interval$shape)
+      }
+    }
+    if(interval$dist == "skewnormal") {
+      get_intervals <- function(x, interval) {
+        sn::rsn(x, xi = interval$location, alpha = interval$shape, omega = interval$scale)
+      }
+    }
+    if(interval$dist == "lognormal") {
+      get_intervals <- function(x, interval) {
+        if(is.null(interval$location)){
+          interval$location <- log(interval$mean^2 / sqrt(interval$sd^2 + interval$mean^2))
+          interval$shape <- sqrt(log(1 + (interval$sd^2 / interval$mean^2)))
+        }
+        rlnorm(x, interval$location, interval$shape)
       }
     }
   }
@@ -124,6 +138,20 @@ backward_propagate_linelist <- function (linelist, interval) {
         rgamma(x,shape=interval$shape,scale=interval$mean/interval$shape)
       }
     }
+    if(interval$dist == "skewnormal") {
+      get_intervals <- function(x, interval) {
+        sn::rsn(x, xi = interval$location, alpha = interval$shape, omega = interval$scale)
+      }
+    }
+    if(interval$dist == "lognormal") {
+      get_intervals <- function(x, interval) {
+        if(is.null(interval$location)){
+          interval$location <- log(interval$mean^2 / sqrt(interval$sd^2 + interval$mean^2))
+          interval$shape <- sqrt(log(1 + (interval$sd^2 / interval$mean^2)))
+        }
+        rlnorm(x, interval$location, interval$shape)
+      }
+    }
   }
   
   intervals <- get_intervals(nrow(linelist),interval)
@@ -138,7 +166,7 @@ backward_propagate_linelist <- function (linelist, interval) {
 
 ## Get onset curve for range of dates from linelist
 
-get_onset_curve <- function(dates, linelist, interval) {
+get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
   dates <- range(dates)
   onset.curve <- linelist %>% 
     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
@@ -155,15 +183,33 @@ get_onset_curve <- function(dates, linelist, interval) {
       interval$scale <- interval$mean/interval$shape # gamma
       interval$sd <- sqrt(interval$shape*interval$scale^2) # gamma
     }
+    if(interval$dist == "skewnormal") {
+      # if SD provided as a parameter of interval, do nothing
+      # if sd not provided, 
+      if(is.null(interval$sd)){
+        delta <- interval$shape / (sqrt(1 + interval$shape^2))
+        variance <- interval$scale^2 * (1 - (2 * delta)/pi )
+        interval$sd <- sqrt(variance) 
+      }
+    }
+    if(interval$dist == "lognormal") {
+      # Do nothing. sd must be provided
+    }
   }
   
-  # set last several valsues to NA
+  natail <- interval$mean+interval$sd*2
+  if(!is.null(next_intervals)){
+    for(i in 1:length(next_intervals)){
+      natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
+    }
+  }
+  
+  # set last several values to NA
   onset.curve <- tail_na(onset.curve,
-                         round(interval$mean+interval$sd*2) 
+                         round(natail) 
                          )
   onset.curve
 }
-
 
 ## Get value of state at a single "date" from "linelist"
 get_state <- function(date, linelist) {
@@ -172,7 +218,7 @@ get_state <- function(date, linelist) {
 }
 
 ## Get state curve for range of dates from linelist
-get_state_curve <- function(dates, linelist, interval){
+get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
   
   if(is.numeric(interval)){
@@ -185,9 +231,28 @@ get_state_curve <- function(dates, linelist, interval){
       interval$scale <- interval$mean/interval$shape # gamma
       interval$sd <- sqrt(interval$shape*interval$scale^2) # gamma
     }
+    if(interval$dist == "skewnormal") {
+      # if SD provided as a parameter of interval, do nothing
+      # if sd not provided, 
+      if(missing(interval$sd)){
+        delta <- interval$shape / (sqrt(1 + interval$shape^2))
+        variance <- interval$scale^2 * (1 - (2 * delta)/pi )
+        interval$sd <- sqrt(variance) 
+      }
+    }
+    if(interval$dist == "lognormal") {
+      # Do nothing. sd must be provided
+    }
   }
   
-  values <- tail_na(values, round(interval$mean+interval$sd*2))
+  natail <- interval$mean+interval$sd*2
+  if(!is.null(next_intervals)){
+    for(i in 1:length(next_intervals)){
+      natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
+    }
+  }
+  
+  values <- tail_na(values, round(natail))
   
   state.curve <- tibble(
     date = dates, 
@@ -233,7 +298,7 @@ tvar_forecast_to_present <- function(curve,lag=1) {
   forecast
 }
 
-# nowcast
+# nowcast from case reports
 
 nowcast_from_case_reports <- function(casereports, params) {
   database <- casereports
@@ -308,7 +373,83 @@ nowcast_from_case_reports <- function(casereports, params) {
   return(database)
 }
 
-# plot nowcast
+# nowcast from death reports using symtpom-onset-to-death
+
+nowcast_from_deaths_with_onset_to_death <- function(deathreports, params) {
+  database <- deathreports
+  database$q <- US.params$q
+  database$a <- US.params$a
+  database$c <- US.params$c
+  database$CFR <- US.params$CFR
+
+  # Compensate for CFR
+  database$deaths_over_CFR <- database$deaths / database$CFR
+    
+  # I linelist
+  I_to_Death.linelist <- backward_simulate_linelist(dates = database$Date,
+                                           counts = database$deaths_over_CFR,
+                                           interval = params$onset.to.death.period)
+  # I onset
+  I.onset <- get_onset_curve(dates = database$Date,
+                             linelist = I_to_Death.linelist,
+                             interval = params$onset.to.death.period)
+  database$I.onset <- I.onset$n
+  
+  # I
+  I <- get_state_curve(dates = database$Date,
+                         linelist = I_to_Death.linelist,
+                         interval = params$onset.to.death.period)
+  database$I <- I$value
+  
+  # E linelist
+  E_to_I.linelist <- backward_propagate_linelist(I_to_Death.linelist,
+                                                 interval = params$incubation.period)
+  
+  # E onset
+  E.onset <- get_onset_curve(dates = database$Date,
+                             linelist = E_to_I.linelist,
+                             interval = params$incubation.period,
+                             next_intervals = list(params$onset.to.death.period))  
+  database$E.onset <- E.onset$n
+  
+  # E
+  E <- get_state_curve(dates = database$Date,
+                         linelist = E_to_I.linelist,
+                         interval = params$incubation.period,
+                         next_intervals = list(params$onset.to.death.period))
+  database$E <- E$value
+  
+  # forecasting I
+  I.forecast <- tvar_forecast_to_present(database$I)
+  database$I.fit <- I.forecast$fit
+  database$I.forecast.mean <- I.forecast$mean
+  database$I.forecast.lower95 <- I.forecast$lower95
+  database$I.forecast.upper95 <- I.forecast$upper95
+  
+  # forecasting E
+  E.forecast <- tvar_forecast_to_present(database$E)
+  database$E.fit <- E.forecast$fit
+  database$E.forecast.mean <- E.forecast$mean
+  database$E.forecast.lower95 <- E.forecast$lower95
+  database$E.forecast.upper95 <- E.forecast$upper95
+  
+  # nowcast
+  
+  database <- database %>% 
+    mutate(nowcast.mean = rowSums(
+      dplyr::select(., I, I.forecast.mean, E, E.forecast.mean), na.rm = TRUE)
+    ) %>% 
+    mutate(nowcast.lower95 = rowSums(
+      dplyr::select(., I, I.forecast.lower95, E, E.forecast.lower95), na.rm = TRUE)
+    ) %>% 
+    mutate(nowcast.upper95 = rowSums(
+      dplyr::select(., I, I.forecast.upper95, E, E.forecast.upper95), na.rm = TRUE)
+    )
+  return(database)
+}
+
+
+# plot nowcast from case reports
 
 plot_nowcast_from_case_reports <- function(database) {
   
@@ -371,6 +512,74 @@ plot_nowcast_from_case_reports <- function(database) {
                                                  # legend = list()
                                                  showlegend = FALSE
                                                  )
+  p_nowcast_logy
+}
+
+# plot nowcast from death reports
+
+plot_nowcast_from_death_reports <- function(database) {
+  
+  col.cases <- 'rgba(0, 0, 0, 1)'
+  col.I <- 'rgba(230, 7, 7, .75)'
+  col.I.ci <- 'rgba(230, 7, 7, .25)'
+  col.E <- 'rgba(7, 164, 181, 0.75)'
+  col.E.ci <- 'rgba(7, 164, 181, 0.0)'
+  col.nowcast <- 'rgba(7, 7, 230, 0.75)'
+  col.nowcast.ci <- 'rgba(7, 7, 230, 0.25)'
+  
+  ci.lwd <- .5
+  mean.lwd <- 1
+  data.lwd <- 2
+  
+  p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~deaths, type = 'scatter',
+                               name = 'Death notifications', mode = 'lines',
+                               line = list(color = col.cases, width = data.lwd),
+                               legendgroup = 'group1'
+  ) %>% 
+    plotly::add_trace(y = ~I, 
+                      name = 'Symptomatic cases in the community', mode = 'lines',
+                      line = list(color = col.I, width = data.lwd),
+                      legendgroup = 'group2') %>%
+    plotly::add_trace(y = ~I.forecast.mean, 
+                      name = '(forecast average)', mode = 'lines',
+                      line = list(color = col.I, width = mean.lwd, dash = 'dot'),
+                      legendgroup = 'group2') %>% 
+    plotly::add_ribbons(ymin = ~I.forecast.lower95, ymax = ~I.forecast.upper95,
+                        name = '(95% confidence)', mode='lines',
+                        line = list(color = col.I, width = ci.lwd),
+                        fillcolor = col.I.ci,
+                        legendgroup = 'group2') %>% 
+    
+    plotly::add_trace(y = ~E, 
+                      name = 'Latent cases in the community', mode = 'lines',
+                      line = list(color = col.E, width = data.lwd),
+                      legendgroup = 'group3') %>%
+    plotly::add_trace(y = ~E.forecast.mean, 
+                      name = '(forecast average)', mode = 'lines',
+                      line = list(color = col.E, width = mean.lwd, dash = 'dot'),
+                      legendgroup = 'group3') %>% 
+    plotly::add_ribbons(ymin = ~E.forecast.lower95, ymax = ~I.forecast.upper95,
+                        name = '(95% confidence)', mode='lines',
+                        line = list(color = col.E, width = ci.lwd),
+                        fillcolor = col.E.ci,
+                        legendgroup = 'group3') %>% 
+    
+    plotly::add_trace(y = ~nowcast.mean, 
+                      name = 'Total cases in the community', mode = 'lines',
+                      line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
+                      legendgroup = 'group1') %>% 
+    plotly::add_ribbons(ymin = ~nowcast.lower95, ymax = ~nowcast.upper95,
+                        name = '(95% confidence)', mode='lines',
+                        line = list(color = col.nowcast, width = ci.lwd),
+                        fillcolor = col.nowcast.ci,
+                        legendgroup = 'group1')
+  
+  p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", 
+                                                              range=c(-.25,5),
+                                                              title = "Number"),
+                                                 # legend = list()
+                                                 showlegend = FALSE
+  )
   p_nowcast_logy
 }
 

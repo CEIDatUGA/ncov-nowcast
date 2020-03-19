@@ -1,0 +1,39 @@
+---
+title: "R Notebook"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+
+#### curve of under-reporting fraction
+
+$$
+\text{underreporting fraction} = \frac{\text{nowcast from case reports}}{\text{nowcast from fatalities}}
+$$
+
+```{r}
+
+nowcast_from_cases <- US.all
+nowcast_from_deaths <- US.nowcast
+
+underreporting <- nowcast_from_cases$nowcast.mean[1:106] / nowcast_from_deaths$nowcast.mean[1:106]
+
+underreporting.upper <- nowcast_from_cases$nowcast.upper95[1:106] / nowcast_from_deaths$nowcast.upper95[1:106]
+underreporting.lower <- nowcast_from_cases$nowcast.lower95[1:106] / nowcast_from_deaths$nowcast.lower95[1:106]
+
+
+# plot(x = US.all$Date[1:106], y = underreporting, yaxt="n", type= 'l', ylab="Case ascertainment (%)", xlab = "Date")
+# lines(x = US.all$Date[1:106], y = underreporting.upper, type= "l", lty = "dashed")
+# lines(x = US.all$Date[1:106], underreporting.lower, type= "l", lty = "dashed")
+# axis(2, at=pretty(underreporting), lab=pretty(underreporting) * 100, las=1)
+
+plot(x = US.all$Date[1:106], y = underreporting, yaxt="n", type= 'l', log='y', ylab="Case ascertainment (%)", xlab = "Date")
+lines(x = US.all$Date[1:106], y = underreporting.upper, type= "l", lty = "dashed")
+lines(x = US.all$Date[1:106], underreporting.lower, type= "l", lty = "dashed")
+axis(2, at=pretty(underreporting), lab=pretty(underreporting) * 100, las=1)
+
+```
+
