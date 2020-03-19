@@ -1,39 +1,80 @@
 ---
-title: "R Notebook"
+title: "Ascertainment rate"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  html_notebook: default
   html_document:
     df_print: paged
-  pdf_document: default
 ---
 
+The ratio of the two estimates (nowcasts) for the number of persons acquiring infection on any given day is an estimate of the **ascertainment rate**.
 
-#### curve of under-reporting fraction
+The **ascertainment rate** tells us how many infections we don't know about compared with those we do know about.
+
 
 $$
-\text{underreporting fraction} = \frac{\text{nowcast from case reports}}{\text{nowcast from fatalities}}
+\text{ascertainment rate} = \frac{\text{nowcast from case reports}}{\text{nowcast from fatalities}}
 $$
 
-```{r}
+```{r include = FALSE}
+library(tidyverse)
+library(plotly)
+nowcast_from_cases <- readRDS("US.nowcast.from.cases.rds")
+nowcast_from_deaths <- readRDS("US.nowcast.from.fatalities.rds")
 
-nowcast_from_cases <- US.all
-nowcast_from_deaths <- US.nowcast
+span <- min(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
 
-underreporting <- nowcast_from_cases$nowcast.mean[1:106] / nowcast_from_deaths$nowcast.mean[1:106]
+nowcast_from_cases <- nowcast_from_cases[1:span,]
+nowcast_from_deaths <- nowcast_from_deaths[1:span,]
 
-underreporting.upper <- nowcast_from_cases$nowcast.upper95[1:106] / nowcast_from_deaths$nowcast.upper95[1:106]
-underreporting.lower <- nowcast_from_cases$nowcast.lower95[1:106] / nowcast_from_deaths$nowcast.lower95[1:106]
+ascertianment <- tibble(Date = nowcast_from_cases$Date, 
+                       nowcast.from.cases = nowcast_from_cases$nowcast.mean,
+                       nowcast.from.cases.upper = nowcast_from_cases$nowcast.upper95,
+                       nowcast.from.cases.lower = nowcast_from_cases$nowcast.lower95,
+                       nowcast.from.deaths = nowcast_from_deaths$nowcast.mean,
+                       nowcast.from.deaths.upper = nowcast_from_deaths$nowcast.upper95,
+                       nowcast.from.deaths.lower = nowcast_from_deaths$nowcast.lower95)
 
+ascertianment <- ascertianment %>% 
+  mutate(a = nowcast.from.cases / nowcast.from.deaths,
+         a.upper = nowcast.from.cases.upper / nowcast.from.deaths.upper,
+         a.lower = nowcast.from.cases.lower / nowcast.from.deaths.lower)
 
 # plot(x = US.all$Date[1:106], y = underreporting, yaxt="n", type= 'l', ylab="Case ascertainment (%)", xlab = "Date")
 # lines(x = US.all$Date[1:106], y = underreporting.upper, type= "l", lty = "dashed")
 # lines(x = US.all$Date[1:106], underreporting.lower, type= "l", lty = "dashed")
 # axis(2, at=pretty(underreporting), lab=pretty(underreporting) * 100, las=1)
 
-plot(x = US.all$Date[1:106], y = underreporting, yaxt="n", type= 'l', log='y', ylab="Case ascertainment (%)", xlab = "Date")
-lines(x = US.all$Date[1:106], y = underreporting.upper, type= "l", lty = "dashed")
-lines(x = US.all$Date[1:106], underreporting.lower, type= "l", lty = "dashed")
-axis(2, at=pretty(underreporting), lab=pretty(underreporting) * 100, las=1)
+  col.cases <- 'rgba(0, 0, 0, 1)'
+  col.I <- 'rgba(230, 7, 7, .75)'
+  col.I.ci <- 'rgba(230, 7, 7, .25)'
+  col.E <- 'rgba(7, 164, 181, 0.75)'
+  col.E.ci <- 'rgba(7, 164, 181, 0.0)'
+  col.nowcast <- 'rgba(7, 7, 230, 0.75)'
+  col.nowcast.ci <- 'rgba(7, 7, 230, 0.25)'
+  col.other = 'rgb(164, 0, 181, .75)'         
+  col.other.ci = 'rgb(164, 0, 181, .25)'
+  
+  ci.lwd <- .5
+  mean.lwd <- 1
+  data.lwd <- 2
+  
+
+p_ascertainment <- plotly::plot_ly(data = ascertianment, x = ~Date , y = ~a, type = 'scatter',
+                               name = 'Ascertainment %', mode = 'lines',
+                               line = list(color = col.other, width = data.lwd)
+                               ) %>%
+    plotly::add_trace(y = ~a.lower,
+                      name = 'upper 95% confidence', mode = 'lines',
+                      line = list(color = col.other, width = ci.lwd, dash = 'dot')) %>%
+    plotly::add_trace(y = ~a.upper,
+                      name = 'lower 95% confidence', mode = 'lines',
+                      line = list(color = col.other, width = ci.lwd)) %>%
+      plotly::layout(yaxis = list(type = "log",tickformat = ".2%",title="Ascertainment %"))
+```
+
+
+```{r plot, echo=FALSE,warning=FALSE,message=FALSE}
+p_ascertainment
 
 ```
 

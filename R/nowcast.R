@@ -380,14 +380,14 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports, params) {
   database$q <- US.params$q
   database$a <- US.params$a
   database$c <- US.params$c
-  database$CFR <- US.params$CFR
+  database$IFR <- US.params$IFR
 
-  # Compensate for CFR
-  database$deaths_over_CFR <- database$deaths / database$CFR
+  # Compensate for IFR
+  database$deaths_over_IFR <- database$deaths / database$IFR
     
   # I linelist
   I_to_Death.linelist <- backward_simulate_linelist(dates = database$Date,
-                                           counts = database$deaths_over_CFR,
+                                           counts = database$deaths_over_IFR,
                                            interval = params$onset.to.death.period)
   # I onset
   I.onset <- get_onset_curve(dates = database$Date,
@@ -471,7 +471,7 @@ plot_nowcast_from_case_reports <- function(database) {
                                legendgroup = 'group1'
                                ) %>% 
     plotly::add_trace(y = ~I, 
-                      name = 'Symptomatic cases in the community', mode = 'lines',
+                      name = 'Symptomatic cases', mode = 'lines',
                       line = list(color = col.I, width = data.lwd),
                       legendgroup = 'group2') %>%
     plotly::add_trace(y = ~I.forecast.mean, 
@@ -485,7 +485,7 @@ plot_nowcast_from_case_reports <- function(database) {
                         legendgroup = 'group2') %>% 
     
     plotly::add_trace(y = ~E, 
-                      name = 'Latent cases in the community', mode = 'lines',
+                      name = 'Latent cases', mode = 'lines',
                       line = list(color = col.E, width = data.lwd),
                       legendgroup = 'group3') %>%
     plotly::add_trace(y = ~E.forecast.mean, 
@@ -499,7 +499,7 @@ plot_nowcast_from_case_reports <- function(database) {
                         legendgroup = 'group3') %>% 
     
     plotly::add_trace(y = ~nowcast.mean, 
-                      name = 'Total cases in the community', mode = 'lines',
+                      name = 'Total unnotified cases', mode = 'lines',
                       line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
                       legendgroup = 'group1') %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower95, ymax = ~nowcast.upper95,
@@ -521,9 +521,9 @@ plot_nowcast_from_death_reports <- function(database) {
   
   col.cases <- 'rgba(0, 0, 0, 1)'
   col.I <- 'rgba(230, 7, 7, .75)'
-  col.I.ci <- 'rgba(230, 7, 7, .25)'
+  col.I.ci <- 'rgba(230, 7, 7, 0.0)'
   col.E <- 'rgba(7, 164, 181, 0.75)'
-  col.E.ci <- 'rgba(7, 164, 181, 0.0)'
+  col.E.ci <- 'rgba(7, 164, 181, .25)'
   col.nowcast <- 'rgba(7, 7, 230, 0.75)'
   col.nowcast.ci <- 'rgba(7, 7, 230, 0.25)'
   
@@ -537,7 +537,7 @@ plot_nowcast_from_death_reports <- function(database) {
                                legendgroup = 'group1'
   ) %>% 
     plotly::add_trace(y = ~I, 
-                      name = 'Symptomatic cases in the community', mode = 'lines',
+                      name = 'Symptomatic cases', mode = 'lines',
                       line = list(color = col.I, width = data.lwd),
                       legendgroup = 'group2') %>%
     plotly::add_trace(y = ~I.forecast.mean, 
@@ -551,7 +551,7 @@ plot_nowcast_from_death_reports <- function(database) {
                         legendgroup = 'group2') %>% 
     
     plotly::add_trace(y = ~E, 
-                      name = 'Latent cases in the community', mode = 'lines',
+                      name = 'Latent cases', mode = 'lines',
                       line = list(color = col.E, width = data.lwd),
                       legendgroup = 'group3') %>%
     plotly::add_trace(y = ~E.forecast.mean, 
@@ -565,7 +565,7 @@ plot_nowcast_from_death_reports <- function(database) {
                         legendgroup = 'group3') %>% 
     
     plotly::add_trace(y = ~nowcast.mean, 
-                      name = 'Total cases in the community', mode = 'lines',
+                      name = 'Total unnotified cases', mode = 'lines',
                       line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
                       legendgroup = 'group1') %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower95, ymax = ~nowcast.upper95,
@@ -575,7 +575,7 @@ plot_nowcast_from_death_reports <- function(database) {
                         legendgroup = 'group1')
   
   p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", 
-                                                              range=c(-.25,5),
+                                                              range=c(-.25,7),
                                                               title = "Number"),
                                                  # legend = list()
                                                  showlegend = FALSE

@@ -1,0 +1,87 @@
+---
+title: "Nowcasting from fatalities"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(tibbletime)
+library(padr)
+library(tvReg)
+library(forecast)
+source('R/package.R')
+source('R/deconcolve.R')
+source('R/simple_tdar.R')
+source('R/package_tv.R')
+source('R/nowcast.R')
+
+```
+
+<!-- Get fatalities reports for US states -->
+```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+# read data directly from google sheet.
+
+sheets_file <- "https://docs.google.com/spreadsheets/d/1SC28cM52m6s1gTJutpvFxadT9GGu-li90tsqkGuaM48/edit#gid=219891324"
+sheets_tab <- "Cumulative fatalities reported by country"
+  
+cum.fatalities <- googlesheets4::sheets_read(ss = sheets_file, sheet = sheets_tab) %>%
+  dplyr::select(-Sources, -Contributor) %>% 
+  rename_all(list(~make.names(.))) %>%
+  # mutate_if(is.list, fixcolumns) %>%
+  mutate(Date = as.Date(Date)) %>%
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>%
+  mutate(World = rowSums(.[,-1],na.rm = TRUE))
+
+cum.fatalities.diff <- cum.fatalities %>% select(-Date) %>% 
+  as.matrix() %>% diff() %>% as_tibble()
+
+# New deaths by day for all countries
+fatalities <- bind_rows(cum.fatalities[1,-1],cum.fatalities.diff) %>% bind_cols(cum.fatalities[,1],.)
+
+# New deaths by day for the US
+fatalities.US <- fatalities %>% dplyr::select(Date, deaths = US)
+  
+```
+
+<!-- Set params for US -->
+```{r params, include=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+US.params <- list(admin = "US", # state or country
+                  # q = 1, # Detection probability
+                  # a = 0.346, # Proportion of cases that are asymptomatic # not used
+                  # c = 1, # Transmissability of undetectable cases
+                  # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf
+                  IFR = .009, 
+                  # effective.infectious.period = list(dist="exponential", mean=2.67), # our analysis, not used
+                  infectious.period = list(dist="exponential", mean=7), # accepted value
+                  incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942), # out analysis of US data
+                  # from US data (our analysis) (not used)
+                  report.to.death.period = list(dist="skewnormal", mean = 0.6123151, sd = 3.1429762,
+                                                location = -2.388990, 
+                                                scale = -2.388990, 
+                                                shape = 1.728359),
+                  # from China data: lognormal distribution with a 
+                  # location parameter of 2.84 and a scale parameter of 0.52 
+                  # (Jung et al.) https://doi.org/10.3390/jcm9020523 
+                  onset.to.death.period = list(dist="lognormal", mean = 19.9, sd = 11.4)
+                  )
+```
+
+<!-- calculate nowcast for US -->
+```{r nowcasts, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+US.nowcast <- nowcast_from_deaths_with_onset_to_death(deathreports = fatalities.US, US.params)
+saveRDS(US.nowcast,"US.nowcast.from.fatalities.rds")
+```
+
+```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_death_reports(US.nowcast)
+```
+
+![](nowcast-legend-deaths.png)
+

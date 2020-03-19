@@ -27,63 +27,52 @@ source('R/nowcast.R')
 
 **At any given time, most COVID-19 cases are circulating in the community and not known to us.**
 
-We wish to estimate the **total current size of the COVID-19 outbreak**, i.e. the total number of unnotified individuals currently infected with SARS-CoV2. We need to estimate this number from **case reports** (the number of newly confirmed cases on a given day).
+We wish to estimate the **total current size of the COVID-19 outbreak** (the total number of unnotified individuals currently infected with SARS-CoV2). 
 
-Case reports do not include infected persons who are symptomatic but not yet diagnosed, nor infected persons with latent infections (people who cary the virus but are not *yet* symptomatic). In addition, a number of individuals may be infected but never develop sysmptoms. It is possible that these these *asymptomatic infections* may still transmit the virus.
+We can estimate this number from one of two sources of data:
 
-To estimate the size of the outbreak at any given time, we first estimate the number of symptomatic and latent infections in the community, accounting for cases that would be missed because they would never show symptoms.
+- **case reports** (the number of newly confirmed cases on a given day), or
+- **fatality reports** (the number of fatalities reported on a given day)
 
-The infection fatality rate of COVID-19 is known with a reasonable degree of precision to be around 0.9%.
-We reasoned that fatal cases are much less likely to be overlooked than non-fatal cases (particularly asymptomatic cases and cases with mild symtoms).
-Additionally, the distribution of time from onset of symptoms to death has been estimated.
-Taken together, these pieces of information allowthe construction of a symptom onset curve in a manner analogous to that used for case notification data.
+#### Estimating from case reports
+
+Case reports do not include infected persons who are symptomatic but not yet diagnosed, nor infected persons with latent infections (people who cary the virus but are not *yet* symptomatic). In addition, a number of individuals may be infected but never develop sysmptoms. It is possible that these *asymptomatic infections* may still transmit the virus. 
+
+To estimate the size of the outbreak at any given time from case reports, we first estimate the number of symptomatic and latent infections in the community, accounting for cases that would be missed because they would never show symptoms. The estimates of symptomatic and latent infections are only valid some time before the present, so we forecast from that point to the present. At any time, the sum of sympotmatic and latent infections is our estimate of the total number of unnotified individuals currently infected with SARS-CoV2.
+
+#### Estimating from fatality reports
+
+The infection fatality rate (IFR) of COVID-19 is known with a reasonable degree of precision to be around 0.9%. We reasoned that fatal cases are much less likely to be overlooked than non-fatal cases (particularly asymptomatic cases and cases with mild symtoms). Additionally, the distribution of time from onset of symptoms to death has been estimated. Taken together, these pieces of information allow the construction of a symptom onset curve in a manner analogous to that used for case notification data. 
+
+#### Ascertainment rate
+
 The ratio of the two different estimates for the number of persons acquiring infection on any given day is an estimate of the **ascertainment rate**.
 
-**Details:**
+The **ascertainment rate** tells us how many infections we don't know about compared with those we do know about.
 
-From case notification reports (the number of newly confirmed cases), we use Monte Carlo simulation and estimated probability distributions to construct a synthetic **line list** of symptom onset times for all cases that are eventually notified. The average **delay from symtpom onset to case notification** for the US is 2.67 days^[Analysis by the Center for the Ecology of Infectious Diseases of US data. See supplemental information.]. Simulated symtom onset times are assumed to be exponentially distributed with a mean of 2.67 days before the reporting date.
+### Algorithm details
 
-A second simulation generates synthetic exposure dates for each infected individual. The average **incubation period** for the US is 7.67 days^[Analysis by the Center for the Ecology of Infectious Diseases of US data suggests a mean incubation period of 7.67 days. See supplemental information.]. Individual simulated exposure times are distributed according to a gamma distribution with a mean of 7.67 days before symptom onset (gshape parameter: 4.18).
+From **case notification reports** (the number of newly confirmed cases on each day), we use Monte Carlo simulation and estimated probability distributions to construct a synthetic **line list** of symptom onset times for all cases that are eventually notified. The average **delay from symtpom onset to case notification** for the US is 4.4 days^[Analysis by the Center for the Ecology of Infectious Diseases of US data. See supplemental information.]. Simulated symtom onset times are distributed according to a gamma distribution with a mean of 4.4 days before case notification (shape parameter: 1.9816403).
 
-Now we have a synthetic line list that generates the observed number of case notifications  and includes exposure date, symptom onset date, and notification date.
+A second simulation generates synthetic exposure dates for each infected individual. The average **incubation period** for the US is 7.67 days^[Analysis by the Center for the Ecology of Infectious Diseases of US data suggests a mean incubation period of 7.67 days. See supplemental information.]. Individual simulated exposure times are distributed according to a gamma distribution with a mean of 7.67 days before symptom onset (shape parameter: 4.18).
 
-From the line list, we tally the **number of individuals with latent infections** on each date to produce a curve of the numbr of latent cases in the community. We do the same to find the **number of individuals symptomatic infections** on each date. These curves represent only individuals with latent and symptomatic cases that were eventually reported.
+Now we have a synthetic line list that generates the observed number of case notifications and includes exposure date, symptom onset date, and notification date.
 
-Based on testing of passengers on the Princes Cruises ship in Yokohama, Japan, Mizumoto *et al.* estimated that the **proportion of cases that are asymptomatic** is 34.6% (95% CrI: 29.4%–39.8%)^[Kenji Mizumoto, Katsushi Kagaya, Alexander Zarebski, Gerardo Chowell. Estimating the Asymptomatic Ratio of 2019 Novel Coronavirus onboard the Princess Cruises Ship, 2020. medRxiv preprint. <https://doi.org/10.1101/2020.02.20.20025866>]. We assume asymptomatic cases are never detected. To account for these, we multiply both the number of symptomatic cases and the number of latent cases by $\frac{1}{34.6\%}$. 
+From the line list, we tally the **number of individuals with latent infections** on each date to produce a curve of the number of latent cases in the community. We do the same to find the **number of individuals symptomatic infections** on each date. These curves represent only individuals with latent and symptomatic cases that were eventually reported.
 
-Since the symptom onsets occur on average 2.67 days before reporting, we are only sure to have an accurate estimate for the number of symptomatic individuals at some time prior to 2.67 days befor the present. We therefore discard estimates for the last several days, and use statistical forecasting to extrapolate from the observed trajectory of symptomatic cases to the present time. This is the "nowcast" of symptomatic individuals. We repeat the process for latent cases, replacing values for times within 7.67 dyas of the present time by a forecasted estimate.
+Based on testing of passengers on the Princes Cruises ship in Yokohama, Japan, Mizumoto *et al.* estimated that the **proportion of cases that are asymptomatic** is 34.6% (95% CrI: 29.4%–39.8%)^[Kenji Mizumoto, *et al*. Estimating the Asymptomatic Ratio of 2019 Novel Coronavirus onboard the Princess Cruises Ship, 2020. medRxiv preprint. <https://doi.org/10.1101/2020.02.20.20025866>]. We assume asymptomatic cases are never detected. To account for these, we multiply both the number of symptomatic cases and the number of latent cases by $\frac{1}{34.6\%}$. 
 
-The sum of the latent and symptomatic cases at any time provides an estimate of number of asymptomatic and unnotified cases.
+Since the symptom onsets occur on average 2.67 days before reporting, we are only sure to have an accurate estimate for the number of symptomatic individuals at some time prior to 2.67 days befor the present. We therefore discard estimates for the last several days (2.67 days plus a margin of 2 standard deviations), and use statistical forecasting to extrapolate from the observed trajectory of symptomatic cases to the present time. This is the "nowcast" of symptomatic individuals. 
 
-<!-- **Natural infectious period** $\frac{1}{\gamma_0}$ -->
+We repeat the process for latent cases, discarding values for times within 7.67 days (plus a margin) of the last good estimate of symptomatic individuals, and forecasting to the present. The is the "nowcast" of latent individuals. 
 
-<!-- The natural infectious period $\frac{1}{\gamma_0}$ in the absence of containment is assumed to be 7 days. -->
-<!-- Set params for US -->
-```{r params, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
-US.params <- list(admin = "US", # state or country
-                    q = 1, # Detection probability
-                    a = 0.346, # Proportion of cases that are asymptomatic
-                    c = 1, # Transmissability of undetectable cases
-                    effective.infectious.period = list(dist="exponential", mean=2.67),
-                    infectious.period = list(dist="exponential", mean=7),
-                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
-                    )
-```
+The sum of the latent and symptomatic cases at any time provides an estimate of toatal number of cases (including asymptomatic and unnotified) cases.
 
+From **fatality reports** (the number of newly reported deaths on each day), we use Monte Carlo simulation and estimated probability distributions to construct a synthetic **line list** of symptom onset times for all cases that are eventually notified. The average **delay from symtpom onset to death**, estimated from data in the China outbreak outside Hubei, is 19.9 days^[Jung-mok Jung, *et al.* Real-Time Estimation of the Risk of Death from Novel Coronavirus (COVID-19) Infection: Inference Using Exported Cases. February 14, 2020, Journal of Clinical Medicine. <https://doi.org/10.3390/jcm9020523>]. Individual simulated symptom onset times are distributed according to a log normal distribution with a mean of 19.9 (standard deviation = 11.4).
 
-```{r params, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
-US.params <- list(admin = "US", # state or country
-                    q = 1, # Detection probability
-                    a = 0.346, # Proportion of cases that are asymptomatic
-                    c = 1, # Transmissability of undetectable cases
-                    effective.infectious.period = list(dist="exponential", mean=2.67),
-                    infectious.period = list(dist="exponential", mean=7),
-                    incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
-                    )
-```
+Based on data from China, and correcting for demographics in Great Britain, Ferguson *et al.* estimated an Infection Fatality Rat (IFR) of 0.9% (95% CrI: 0.4%–1.4%)^[Neil M Ferguson, *et al*. Impact of non-pharmaceutical interventions (NPIs) to reduce COVID19 mortality and healthcare demand. March 16, 2020, Imperial College COVID-19 Response Team. <https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf>]. To account for IFR, we multiply the fatalities by $\frac{1}{0.9\%}$ before simulating the line list of symptom onset times. days before symptom onset (shape parameter: 4.18). The resulting estimates of latent and infectious individuals are assumed to include all unnotified cases.
 
-
-### Data
+### Data sources
 
 **US Case Reports by State**
 
@@ -93,383 +82,14 @@ Data are compiled from <https://en.wikipedia.org/wiki/2020_coronavirus_pandemic_
 
 We aim to update our dataset daily.
 
-```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-# read data directly to google sheet.
+**Fatalities by Country**
 
-sheet <- "https://docs.google.com/spreadsheets/d/10NYNf4UX7R_nNdM-jkbo7A5SGkB8sUVMIiqU7e_-miU/edit#gid=0"
+Country level fatality data are maintained by [CEID](http://ceid.uga.edu) and available
+[here](https://docs.google.com/spreadsheets/d/1SC28cM52m6s1gTJutpvFxadT9GGu-li90tsqkGuaM48/edit#gid=219891324) on the tab called "Cumulative fatalities reported by country."
 
-US <- googlesheets4::sheets_read(sheet)
+Data are compiled from various sources, listed in the dataset. 
 
-names(US)[1] <- "Date"
+We aim to update our dataset daily.
 
-US <- US %>% 
-  rename_all(list(~make.names(.))) %>% 
-  mutate_if(is.list, fixcolumns) %>% 
-  mutate(Date = as.Date(Date)) %>% 
-  padr::pad(start_val = as.Date("2019-12-01")) %>%
-  replace(., is.na(.), 0) %>%
-  tibbletime::as_tbl_time(index=Date) %>% 
-  mutate(US = rowSums(.[,-1],na.rm = TRUE))
 
-```
-
-<!-- calculate nowcasts for US states -->
-```{r nowcasts, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
-
-get_US_nowcast <- function(state) {
-  US %>% select(Date, cases = state) %>% 
-    tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
-}
-
-US.all <- get_US_nowcast("US")
-AK <- get_US_nowcast("AK")
-AL <- get_US_nowcast("AL")
-AR <- get_US_nowcast("AR")
-AZ <- get_US_nowcast("AZ")
-CA <- get_US_nowcast("CA")
-CO <- get_US_nowcast("CO")
-CT <- get_US_nowcast("CT")
-DC <- get_US_nowcast("DC")
-DE <- get_US_nowcast("DE")
-FL <- get_US_nowcast("FL")
-GA <- get_US_nowcast("GA")
-HI <- get_US_nowcast("HI")
-IA <- get_US_nowcast("IA")
-IL <- get_US_nowcast("IL")
-IN <- get_US_nowcast("IN")
-KS <- get_US_nowcast("KS")
-KY <- get_US_nowcast("KY")
-LA <- get_US_nowcast("LA")
-MA <- get_US_nowcast("MA")
-MD <- get_US_nowcast("MD")
-ME <- get_US_nowcast("ME")
-MI <- get_US_nowcast("MI")
-MN <- get_US_nowcast("MN")
-MO <- get_US_nowcast("MO")
-MS <- get_US_nowcast("MS")
-MT <- get_US_nowcast("MT")
-NC <- get_US_nowcast("NC")
-ND <- get_US_nowcast("ND")
-NE <- get_US_nowcast("NE")
-NH <- get_US_nowcast("NH")
-NJ <- get_US_nowcast("NJ")
-NM <- get_US_nowcast("NM")
-NV <- get_US_nowcast("NV")
-NY <- get_US_nowcast("NY")
-OH <- get_US_nowcast("OH")
-OK <- get_US_nowcast("OK")
-OR <- get_US_nowcast("OR")
-PA <- get_US_nowcast("PA")
-RI <- get_US_nowcast("RI")
-SC <- get_US_nowcast("SC")
-SD <- get_US_nowcast("SD")
-TN <- get_US_nowcast("TN")
-TX <- get_US_nowcast("TX")
-UT <- get_US_nowcast("UT")
-VA <- get_US_nowcast("VA")
-VT <- get_US_nowcast("VT")
-WA <- get_US_nowcast("WA")
-WI <- get_US_nowcast("WI")
-WY <- get_US_nowcast("WY")
-```
-
-### USA
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(US.all)
-```
-
-### AK
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r AK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(AK)
-```
-
-### AL
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r AL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(AL)
-```
-
-### AR
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r AR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(AR)
-```
-
-### AZ
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r AZ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(AZ)
-```
-
-### CA
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r CA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(CA)
-```
-
-### CO
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r CO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(CO)
-```
-
-### CT
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r CT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(CT)
-```
-
-### DC
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r DC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(DC)
-```
-
-### DE
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r DE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(DE)
-```
-
-### FL
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r FL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(FL)
-```
-
-### GA
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r GA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(GA)
-```
-
-### HI
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r HI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(HI)
-```
-
-### IA
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r IA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(IA)
-```
-
-### IL
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r IL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(IL)
-```
-
-### IN
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r IN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(IN)
-```
-
-### KS
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r KS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(KS)
-```
-
-### KY
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r KY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(KY)
-```
-
-### LA
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r LA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(LA)
-```
-
-### MA
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(MA)
-```
-
-### MD
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(MD)
-```
-
-### ME
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r ME, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(ME)
-```
-
-### MI
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(MI)
-```
-
-### MN
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(MN)
-```
-
-### MO
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(MO)
-```
-
-### MS
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(MS)
-```
-
-### MT
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r MT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(MT)
-```
-
-### NC
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(NC)
-```
-
-### ND
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r ND, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(ND)
-```
-
-### NE
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(NE)
-```
-
-### NH
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(NH)
-```
-
-### NJ
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NJ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(NJ)
-```
-
-### NM
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(NM)
-```
-
-### NV
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NV, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(NV)
-```
-
-### NY
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r NY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(NY)
-```
-
-### OH
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r OH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(OH)
-```
-
-### OK
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r OK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(OK)
-```
-
-### OR
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r OR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(OR)
-```
-
-### PA
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r PA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(PA)
-```
-
-### RI
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r RI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(RI)
-```
-
-### SC
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r SC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(SC)
-```
-
-### SD
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r SD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(SD)
-```
-
-### TN
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r TN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(TN)
-```
-
-### TX
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r TX, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(TX)
-```
-
-### UT
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r UT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(UT)
-```
-
-### VA
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r VA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(VA)
-```
-
-### VT
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r VT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(VT)
-```
-
-### WA
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r WA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(WA)
-```
-
-### WI
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r WI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(WI)
-```
-
-### WY
-Nowcast (outbreak size) = E + I = the number of non-isolated infected individuals
-```{r WY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-plot_nowcast_from_case_reports(WY)
-```
 
