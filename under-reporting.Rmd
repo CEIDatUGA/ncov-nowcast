@@ -6,43 +6,185 @@ output:
     df_print: paged
 ---
 
-The ratio of the two estimates (nowcasts) for the number of persons acquiring infection on any given day is an estimate of the **ascertainment rate**.
+```{r setup, include=FALSE}
 
-The **ascertainment rate** tells us how many infections we don't know about compared with those we do know about.
-
-
-$$
-\text{ascertainment rate} = \frac{\text{nowcast from case reports}}{\text{nowcast from fatalities}}
-$$
-
-```{r include = FALSE}
 library(tidyverse)
+library(tibbletime)
+library(padr)
+library(tvReg)
+library(forecast)
 library(plotly)
-nowcast_from_cases <- readRDS("US.nowcast.from.cases.rds")
-nowcast_from_deaths <- readRDS("US.nowcast.from.fatalities.rds")
+source('R/nowcast.R')
 
-span <- min(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
+```
 
-nowcast_from_cases <- nowcast_from_cases[1:span,]
-nowcast_from_deaths <- nowcast_from_deaths[1:span,]
+The **ascertainment rate** tells us how many infections we don't know about compared with those we do know about. It is the ratio of detected cases to the true number of cases.
 
-ascertianment <- tibble(Date = nowcast_from_cases$Date, 
+We can calculate the ascertainment rate by comparing two methods of nowcasting. 
+
+Firstly, we nowcast from case fatalities (correcting by the infection fatality rate) and consider that this represents the true number of unreported cases.
+
+We then perform a nowcast from case reports without applying any correction for undetected cases. This represents the number of unreported cases at any given time, as if all cases are detected and reported. This will be an underestimate of the true number.
+
+The ratio of the two estimates (nowcasts) on any given day is an estimate of the **ascertainment rate**.
+
+$$\text{ascertainment rate for nowcasting from case reports} = \frac{\text{nowcast from case reports without correction}}{\text{nowcast from fatalities corrected for IFR}}$$
+
+<!-- Set params for US -->
+```{r params, include=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+params.US <- list(
+  admin = "US", # state or country
+  
+  # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf
+  IFR = .009, 
+
+  # accepted value
+  infectious.period = list(dist="exponential", mean=7),   
+  
+  # our analysis
+  effective.infectious.period = list(dist="exponential", mean=2.67), 
+  
+  # our analysis of US data
+  incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942), 
+  
+  # Our analysis of US data (not used)
+  report.to.death.period = list(dist="skewnormal", mean = 0.6123151, sd = 3.1429762,
+                                location = -2.388990, 
+                                scale = -2.388990, shape = 1.728359),
+  
+  # from China data: lognormal distribution with location 2.84, scale 0.52 
+  # (Jung et al.) https://doi.org/10.3390/jcm9020523 
+  onset.to.death.period = list(dist="lognormal", mean = 19.9, sd = 11.4)
+)
+
+```
+
+<!-- Get case reports for US states -->
+```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+# read data directly from google sheet.
+
+# sheet <- "https://docs.google.com/spreadsheets/d/10NYNf4UX7R_nNdM-jkbo7A5SGkB8sUVMIiqU7e_-miU/edit#gid=0"
+# 
+# US <- googlesheets4::sheets_read(sheet)
+# 
+# US <- US %>% 
+#   rename_all(list(~make.names(.))) %>% 
+#   mutate_if(is.list, fixcolumns) %>% 
+#   mutate(Date = as.Date(Date)) %>% 
+#   padr::pad(start_val = as.Date("2019-12-01")) %>%
+#   replace(., is.na(.), 0) %>%
+#   tibbletime::as_tbl_time(index=Date) %>% 
+#   mutate(US = rowSums(.[,-1],na.rm = TRUE))
+
+
+# Scrape Wikipedia
+
+library(rvest)
+url <- "https://en.wikipedia.org/wiki/2020_coronavirus_pandemic_in_the_United_States"
+
+US.wikipedia <- url %>%
+  html() %>%
+  html_nodes(xpath='//*[@id="mw-content-text"]/div/div[25]/table/tbody/tr[2]/td/div/table') %>%
+  html_table(fill = TRUE)
+US.wikipedia <- US.wikipedia[[1]]
+names(US.wikipedia) <- US.wikipedia[1,]
+US.wikipedia <- US.wikipedia[2:(nrow(US.wikipedia)-5),1:(ncol(US.wikipedia)-6)]
+
+US.wikipedia$Date <- paste(US.wikipedia$Date, "2020") %>% 
+  as.Date("%b %d %Y")
+
+cases.US <- US.wikipedia %>%
+  mutate_if(sapply(US.wikipedia, is.character), as.numeric) %>% 
+  rename_all(list(~make.names(.))) %>% 
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(US = rowSums(.[,-1],na.rm = TRUE))
+
+```
+
+<!-- Get fatalities reports for US states -->
+```{r data2, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+# read data directly from google sheet.
+
+sheets_file <- "https://docs.google.com/spreadsheets/d/1SC28cM52m6s1gTJutpvFxadT9GGu-li90tsqkGuaM48/edit#gid=219891324"
+sheets_tab <- "Cumulative fatalities reported by country"
+  
+cum.fatalities <- googlesheets4::sheets_read(ss = sheets_file, sheet = sheets_tab) %>%
+  dplyr::select(-Sources, -Contributor) %>% 
+  rename_all(list(~make.names(.))) %>%
+  # mutate_if(is.list, fixcolumns) %>%
+  mutate(Date = as.Date(Date)) %>%
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>%
+  mutate(World = rowSums(.[,-1],na.rm = TRUE))
+
+cum.fatalities.diff <- cum.fatalities %>% select(-Date) %>% 
+  as.matrix() %>% diff() %>% as_tibble()
+
+# New deaths by day for all countries
+fatalities <- bind_rows(cum.fatalities[1,-1],cum.fatalities.diff) %>% bind_cols(cum.fatalities[,1],.)
+
+# New deaths by day for the US
+fatalities.US <- fatalities %>% dplyr::select(Date, deaths = US)
+  
+```
+
+
+<!-- Get q (ascertainment) -->
+```{r ascertainment, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+params.US$q <- 1
+
+cases.US.all <- cases.US %>% dplyr::select(Date, cases = US)
+
+nowcast_from_cases <- nowcast_from_case_reports(cases.US.all, params.US)
+nowcast_from_deaths <- nowcast_from_deaths_with_onset_to_death(fatalities.US, params.US)
+
+maxspan <- max(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
+minspan <- min(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
+
+nowcast_from_cases <- nowcast_from_cases[1:minspan,]
+nowcast_from_deaths <- nowcast_from_deaths[1:minspan,]
+
+ascertainment <- tibble(Date = nowcast_from_cases$Date, 
                        nowcast.from.cases = nowcast_from_cases$nowcast.mean,
-                       nowcast.from.cases.upper = nowcast_from_cases$nowcast.upper95,
-                       nowcast.from.cases.lower = nowcast_from_cases$nowcast.lower95,
+                       nowcast.from.cases.upper = nowcast_from_cases$nowcast.upper,
+                       nowcast.from.cases.lower = nowcast_from_cases$nowcast.lower,
                        nowcast.from.deaths = nowcast_from_deaths$nowcast.mean,
-                       nowcast.from.deaths.upper = nowcast_from_deaths$nowcast.upper95,
-                       nowcast.from.deaths.lower = nowcast_from_deaths$nowcast.lower95)
+                       nowcast.from.deaths.upper = nowcast_from_deaths$nowcast.upper,
+                       nowcast.from.deaths.lower = nowcast_from_deaths$nowcast.lower)
 
-ascertianment <- ascertianment %>% 
-  mutate(a = nowcast.from.cases / nowcast.from.deaths,
-         a.upper = nowcast.from.cases.upper / nowcast.from.deaths.upper,
-         a.lower = nowcast.from.cases.lower / nowcast.from.deaths.lower)
+ascertainment <- ascertainment %>% 
+  transmute(Date = Date,
+            mean = nowcast.from.cases / nowcast.from.deaths,
+            upper = nowcast.from.cases.upper / nowcast.from.deaths.upper,
+            lower = nowcast.from.cases.lower / nowcast.from.deaths.lower) 
 
-# plot(x = US.all$Date[1:106], y = underreporting, yaxt="n", type= 'l', ylab="Case ascertainment (%)", xlab = "Date")
-# lines(x = US.all$Date[1:106], y = underreporting.upper, type= "l", lty = "dashed")
-# lines(x = US.all$Date[1:106], underreporting.lower, type= "l", lty = "dashed")
-# axis(2, at=pretty(underreporting), lab=pretty(underreporting) * 100, las=1)
+if(nrow(ascertainment) < nrow(cases.US.all)){
+  mean.pad <- tail(ascertainment$mean,1)
+  upper.pad <- tail(ascertainment$upper,1)
+  lower.pad <- tail(ascertainment$lower,1)
+  ascertainment <- ascertainment %>% 
+    padr::pad(end_val = max(cases.US.all$Date)) %>% 
+    replace_na(list(mean = mean.pad, 
+                    upper = upper.pad, 
+                    lower = lower.pad)
+               )
+}
+
+# replace zeros with NA
+
+ascertainment[ascertainment == 0] <- NA
+
+# replace zeros with NA
+
+params.US$q <- ascertainment
+
+```
+
+```{r plot, include = FALSE}
 
   col.cases <- 'rgba(0, 0, 0, 1)'
   col.I <- 'rgba(230, 7, 7, .75)'
@@ -59,21 +201,21 @@ ascertianment <- ascertianment %>%
   data.lwd <- 2
   
 
-p_ascertainment <- plotly::plot_ly(data = ascertianment, x = ~Date , y = ~a, type = 'scatter',
+p_ascertainment <- plotly::plot_ly(data = ascertainment, x = ~Date , y = ~mean, type = 'scatter',
                                name = 'Ascertainment %', mode = 'lines',
                                line = list(color = col.other, width = data.lwd)
                                ) %>%
-    plotly::add_trace(y = ~a.lower,
+    plotly::add_trace(y = ~lower,
                       name = 'upper 95% confidence', mode = 'lines',
                       line = list(color = col.other, width = ci.lwd, dash = 'dot')) %>%
-    plotly::add_trace(y = ~a.upper,
+    plotly::add_trace(y = ~upper,
                       name = 'lower 95% confidence', mode = 'lines',
                       line = list(color = col.other, width = ci.lwd)) %>%
       plotly::layout(yaxis = list(type = "log",tickformat = ".2%",title="Ascertainment %"))
 ```
 
 
-```{r plot, echo=FALSE,warning=FALSE,message=FALSE}
+```{r displayplot, echo=FALSE,warning=FALSE,message=FALSE}
 p_ascertainment
 
 ```
