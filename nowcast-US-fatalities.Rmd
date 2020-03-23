@@ -14,58 +14,12 @@ library(padr)
 library(tvReg)
 library(forecast)
 source('R/nowcast.R')
-
+source('R/data.R')
 ```
 
 <!-- Get fatalities reports for US states -->
 ```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-# # read data directly from google sheet.
-# 
-# sheets_file <- "https://docs.google.com/spreadsheets/d/1SC28cM52m6s1gTJutpvFxadT9GGu-li90tsqkGuaM48/edit#gid=219891324"
-# sheets_tab <- "Cumulative fatalities reported by country"
-#   
-# cum.fatalities <- googlesheets4::sheets_read(ss = sheets_file, sheet = sheets_tab) %>%
-#   dplyr::select(-Sources, -Contributor) %>% 
-#   rename_all(list(~make.names(.))) %>%
-#   # mutate_if(is.list, fixcolumns) %>%
-#   mutate(Date = as.Date(Date)) %>%
-#   padr::pad(start_val = as.Date("2019-12-01")) %>%
-#   replace(., is.na(.), 0) %>%
-#   tibbletime::as_tbl_time(index=Date) %>%
-#   mutate(World = rowSums(.[,-1],na.rm = TRUE))
-# 
-# cum.fatalities.diff <- cum.fatalities %>% select(-Date) %>% 
-#   as.matrix() %>% diff() %>% as_tibble()
-# 
-# # New deaths by day for all countries
-# fatalities <- bind_rows(cum.fatalities[1,-1],cum.fatalities.diff) %>% bind_cols(cum.fatalities[,1],.)
-# 
-# # New deaths by day for the US
-# fatalities.US <- fatalities %>% dplyr::select(Date, deaths = US)
-
-library(rvest)
-url <- "https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases"
-
-fatalities.US.wikipedia <- url %>%
-  html() %>%
-  html_nodes(xpath='//*[@id="mw-content-text"]/div/div[3]/table') %>%
-  html_table(fill = TRUE)
-fatalities.US.wikipedia <- fatalities.US.wikipedia[[1]]
-names(fatalities.US.wikipedia) <- fatalities.US.wikipedia[1,]
-fatalities.US.wikipedia <- fatalities.US.wikipedia[2:(nrow(fatalities.US.wikipedia)-5),
-                                        1:(ncol(fatalities.US.wikipedia)-2)]
-
-fatalities.US.wikipedia$Date <- paste(fatalities.US.wikipedia$Date, "2020") %>% 
-  as.Date("%b %d %Y")
-
-fatalities.US <- fatalities.US.wikipedia %>%
-  mutate_if(sapply(fatalities.US.wikipedia, is.character), as.numeric) %>% 
-  rename_all(list(~make.names(.))) %>% 
-  padr::pad(start_val = as.Date("2019-12-01")) %>%
-  replace(., is.na(.), 0) %>%
-  tibbletime::as_tbl_time(index=Date) %>% 
-  mutate(US = rowSums(.[,-1],na.rm = TRUE))
-  
+fatalities.US <- readRDS('data/fatalities.US.rds')
 ```
 
 <!-- Set params for US -->
@@ -103,7 +57,7 @@ params.US <- list(
 fatalities.US.all <- fatalities.US %>% dplyr::select(Date, deaths = US)
 
 US.nowcast <- nowcast_from_deaths_with_onset_to_death(deathreports = fatalities.US.all, params.US)
-# saveRDS(US.nowcast,"US.nowcast.from.fatalities.rds")
+# saveRDS(US.nowcast,"data/US.nowcast.from.fatalities.rds")
 ```
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}

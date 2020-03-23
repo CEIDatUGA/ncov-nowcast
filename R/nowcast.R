@@ -432,15 +432,17 @@ nowcast_from_case_reports <- function(casereports, params) {
   
   # E
   E <- get_state_curve(dates = database$Date,
-                         linelist = E.linelist,
-                         interval = params$incubation.period)
+                       linelist = E.linelist,
+                       interval = params$incubation.period,
+                       next_intervals = list(params$effective.infectious.period))
   database$E <- E$value
   
   # E.upper
   if(is.list(params$q)){
     E.upper <- get_state_curve(dates = database$Date,
                        linelist = E.linelist.upper,
-                       interval = params$incubation.period)
+                       interval = params$incubation.period,
+                       next_intervals = list(params$effective.infectious.period))
     database$E.upper <- E.upper$value
   }else{
     database$E.upper <- database$E
@@ -450,7 +452,8 @@ nowcast_from_case_reports <- function(casereports, params) {
   if(is.list(params$q)){
     E.lower <- get_state_curve(dates = database$Date,
                        linelist = E.linelist.lower,
-                       interval = params$incubation.period)
+                       interval = params$incubation.period,
+                       next_intervals = list(params$effective.infectious.period))
     database$E.lower <- E.lower$value
   }else{
     database$E.lower <- database$E
@@ -685,6 +688,71 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports, params) {
   return(database)
 }
 
+# calculate ascertainment
+
+get_ascertainment <- function(cases, deaths, params, window = 7) {
+  params$q <- 1
+  
+  nowcast_from_cases <- nowcast_from_case_reports(cases, params)
+  nowcast_from_deaths <- nowcast_from_deaths_with_onset_to_death(deaths, params)
+  
+  maxspan <- max(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
+  minspan <- min(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
+  
+  nowcast_from_cases <- nowcast_from_cases[1:minspan,]
+  nowcast_from_deaths <- nowcast_from_deaths[1:minspan,]
+  
+  nowcasts <- tibble(Date = nowcast_from_cases$Date,
+                     nowcast.from.cases = nowcast_from_cases$nowcast.mean,
+                     nowcast.from.cases.upper = nowcast_from_cases$nowcast.upper,
+                     nowcast.from.cases.lower = nowcast_from_cases$nowcast.lower,
+                     nowcast.from.deaths = nowcast_from_deaths$nowcast.mean,
+                     nowcast.from.deaths.upper = nowcast_from_deaths$nowcast.upper,
+                     nowcast.from.deaths.lower = nowcast_from_deaths$nowcast.lower)
+  
+  ascertainment <- nowcasts %>%
+    transmute(Date = Date,
+              mean.raw = nowcast.from.cases / nowcast.from.deaths,
+              upper.raw = nowcast.from.cases.upper / nowcast.from.deaths.upper,
+              lower.raw = nowcast.from.cases.lower / nowcast.from.deaths.lower) 
+  
+  # centred box moving average
+  ascertainment$mean = movingAverage(ascertainment$mean.raw, window = window, centered=TRUE)
+  ascertainment$mean[is.nan(ascertainment$mean)] <- NA
+  
+  ascertainment$upper = movingAverage(ascertainment$upper.raw, window = window, centered=TRUE)
+  ascertainment$upper[is.nan(ascertainment$upper)] <- NA
+  
+  ascertainment$lower = movingAverage(ascertainment$lower.raw, window = window, centered=TRUE)
+  ascertainment$lower[is.nan(ascertainment$lower.smooth)] <- NA
+  
+  lastvalue <- function(x) {tail(x[!is.na(x)],1)}
+  
+  if(nrow(ascertainment) < nrow(cases.US.all)){
+    # mean.pad <- tail(ascertainment$mean,1)
+    # upper.pad <- tail(ascertainment$upper,1)
+    # lower.pad <- tail(ascertainment$lower,1)
+    # mean.smooth.pad <- tail(ascertainment$mean.raw,1)
+    # upper.smooth.pad <- tail(ascertainment$upper.raw,1)
+    # lower.smooth.pad <- tail(ascertainment$lower.raw,1)
+    ascertainment <- ascertainment %>%
+      padr::pad(end_val = max(cases.US.all$Date)) 
+  }
+  
+  ascertainment$mean[is.na(ascertainment$mean)] <- lastvalue(ascertainment$mean)
+  ascertainment$upper[is.na(ascertainment$upper)] <- lastvalue(ascertainment$upper)
+  ascertainment$lower[is.na(ascertainment$lower)] <- lastvalue(ascertainment$lower)
+  
+  # # smooth
+  # smoothed <- ascertainment$mean %>% movingAverage(window = 7, centered=TRUE)
+  # plot(ascertainment$mean, log='y', type = "l")
+  # lines(smoothed, col="green", lwd=2)
+  
+  # replace zeros with NA
+  
+  ascertainment[ascertainment == 0] <- NA
+  return(ascertainment)
+}
 
 # plot nowcast from case reports
 
