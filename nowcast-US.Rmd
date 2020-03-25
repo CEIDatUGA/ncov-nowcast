@@ -6,6 +6,8 @@ output:
     df_print: paged
 ---
 
+<!-- Knit this page 4th -->
+
 ```{r setup, include=FALSE}
 
 library(tidyverse)
@@ -13,12 +15,13 @@ library(tibbletime)
 library(padr)
 library(tvReg)
 library(forecast)
-source('R/package.R')
-source('R/deconcolve.R')
-source('R/simple_tdar.R')
-source('R/package_tv.R')
 source('R/nowcast.R')
 
+```
+
+<!-- Get params for US -->
+```{r params, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+params.US <- readRDS('data/params.US.rds')
 ```
 
 ## {.tabset .tabset-fade}
@@ -36,9 +39,9 @@ We can estimate this number from one of two sources of data:
 
 #### Estimating from case reports
 
-Case reports do not include infected persons who are symptomatic but not yet diagnosed, nor infected persons with latent infections (people who cary the virus but are not *yet* symptomatic). In addition, a number of individuals may be infected but never develop sysmptoms. It is possible that these *asymptomatic infections* may still transmit the virus. 
+Case reports do not include infected persons who are symptomatic but not yet diagnosed, nor infected persons with latent infections (people who cary the virus but are not *yet* symptomatic). In addition, a number of individuals may be infected but never develop symptoms. It is possible that these asymptomatic infections may still transmit the virus. The ratio of detecetd cases to the true number of cases is the **ascertainment rate**.
 
-To estimate the size of the outbreak at any given time from case reports, we first estimate the number of symptomatic and latent infections in the community, accounting for cases that would be missed because they would never show symptoms. The estimates of symptomatic and latent infections are only valid some time before the present, so we forecast from that point to the present. At any time, the sum of sympotmatic and latent infections is our estimate of the total number of unnotified individuals currently infected with SARS-CoV2.
+To estimate the size of the outbreak at any given time from case reports, we first adjust the number of new cases for ascertainment rate, then estimate the number of symptomatic and latent infections in the community from the adjusted new case count. The estimates of symptomatic and latent infections are only valid some time before the present, so we forecast from that point to the present. At any time, the sum of sympotmatic and latent infections is our estimate of the total number of unnotified individuals currently infected with SARS-CoV2.
 
 #### Estimating from fatality reports
 
@@ -46,29 +49,31 @@ The infection fatality rate (IFR) of COVID-19 is known with a reasonable degree 
 
 #### Ascertainment rate
 
-The ratio of the two different estimates for the number of persons acquiring infection on any given day is an estimate of the **ascertainment rate**.
-
 The **ascertainment rate** tells us how many infections we don't know about compared with those we do know about.
+
+We find the ascertainment rate for the US by comparing the estimate of the outbreak size in the US derived from *uncorrected* case reports, to the estimate of the outbreak size in the US derived from fatalities (corrected for IFR). The ratio of the two is the ascertainment rate, which varies over time. 
+
+We then apply that ascertainment rate to our national and state case reports to produce nowcasts of outbreak size estimated from case counts for the US and US states.
 
 ### Algorithm details
 
-From **case notification reports** (the number of newly confirmed cases on each day), we use Monte Carlo simulation and estimated probability distributions to construct a synthetic **line list** of symptom onset times for all cases that are eventually notified. The average **delay from symptom onset to case notification** for the US is 4.4 days^[Analysis by the Center for the Ecology of Infectious Diseases of US data. See supplemental information.]. Simulated symtom onset times are distributed according to a gamma distribution with a mean of 4.4 days before case notification (shape parameter: 1.9816403).
+From **case notification reports** (the number of newly confirmed cases on each day), we use Monte Carlo simulation and estimated probability distributions to construct a synthetic **line list** of symptom onset times for all cases that are eventually notified. The average **delay from symptom onset to case notification** for the US is `r params.US$effective.infectious.period$mean` days^[Analysis by the Center for the Ecology of Infectious Diseases of US data. Parameters updated periodically. See supplemental information.]. Simulated symtom onset times are distributed according to a `r params.US$effective.infectious.period$dist` distribution with a mean of `r params.US$effective.infectious.period$mean` days before case notification (shape parameter: `r params.US$effective.infectious.period$shape`).
 
-A second simulation generates synthetic exposure dates for each infected individual. The average **incubation period** for the US is 7.67 days^[Analysis by the Center for the Ecology of Infectious Diseases of US data suggests a mean incubation period of 7.67 days. See supplemental information.]. Individual simulated exposure times are distributed according to a gamma distribution with a mean of 7.67 days before symptom onset (shape parameter: 4.18).
+A second simulation generates synthetic exposure dates for each infected individual. The average **incubation period** for the US is `r params.US$incubation.period$mean` days^[Analysis by the Center for the Ecology of Infectious Diseases of US. Parameters updated periodically. See supplemental information.]. Individual simulated exposure times are distributed according to a `r params.US$incubation.period$dist` distribution with a mean of `r params.US$incubation.period$mean` days before symptom onset (shape parameter: `r params.US$incubation.period$shape`).
 
 Now we have a synthetic line list that generates the observed number of case notifications and includes exposure date, symptom onset date, and notification date.
 
-From the line list, we tally the **number of individuals with latent infections** on each date to produce a curve of the number of latent cases in the community. We do the same to find the **number of individuals symptomatic infections** on each date. These curves represent only individuals with latent and symptomatic cases that were eventually reported.
+From the line list, we tally the **number of individuals with latent infections** on each date to produce a curve of the number of latent cases in the community. We do the same to find the **number of individuals symptomatic infections** on each date. 
 
-Based on testing of passengers on the Princess Cruises ship in Yokohama, Japan, Mizumoto *et al.* estimated that the **proportion of cases that are asymptomatic** is 34.6% (95% CrI: 29.4%–39.8%)^[Kenji Mizumoto, *et al*. Estimating the Asymptomatic Ratio of 2019 Novel Coronavirus onboard the Princess Cruises Ship, 2020. medRxiv preprint. <https://doi.org/10.1101/2020.02.20.20025866>]. We assume asymptomatic cases are never detected. To account for these, we multiply both the number of symptomatic cases and the number of latent cases by $\frac{1}{34.6\%}$. 
+<!-- Based on testing of passengers on the Princess Cruises ship in Yokohama, Japan, Mizumoto *et al.* estimated that the **proportion of cases that are asymptomatic** is 34.6% (95% CrI: 29.4%–39.8%)^[Kenji Mizumoto, *et al*. Estimating the Asymptomatic Ratio of 2019 Novel Coronavirus onboard the Princess Cruises Ship, 2020. medRxiv preprint. <https://doi.org/10.1101/2020.02.20.20025866>]. We assume asymptomatic cases are never detected. To account for these, we multiply both the number of symptomatic cases and the number of latent cases by $\frac{1}{34.6\%}$.  -->
 
-Since the symptom onsets occur on average 2.67 days before reporting, we are only sure to have an accurate estimate for the number of symptomatic individuals at some time prior to 2.67 days befor the present. We therefore discard estimates for the last several days (2.67 days plus a margin of 2 standard deviations), and use statistical forecasting to extrapolate from the observed trajectory of symptomatic cases to the present time. This is the "nowcast" of symptomatic individuals. 
+Since the symptom onsets occur on average `r params.US$effective.infectious.period$mean` days before reporting, we are only sure to have an accurate estimate for the number of symptomatic individuals at some time prior to the present. We therefore discard estimates for the last several days (`r params.US$effective.infectious.period$mean` days plus a margin of 2 standard deviations), and use statistical forecasting to extrapolate from the observed trajectory of symptomatic cases to the present time. This is the "nowcast" of symptomatic individuals. 
 
-We repeat the process for latent cases, discarding values for times within 7.67 days (plus a margin) of the last good estimate of symptomatic individuals, and forecasting to the present. The is the "nowcast" of latent individuals. 
+We repeat the process for latent cases, discarding values for times within `r params.US$incubation.period$mean` days (plus two standard deviations) of the last good estimate of symptomatic individuals, and forecasting to the present. The is the "nowcast" of latent individuals. 
 
-The sum of the latent and symptomatic cases at any time provides an estimate of toatal number of cases (including asymptomatic and unnotified) cases.
+The sum of the latent and symptomatic cases at any time provides an estimate of total number of cases (including asymptomatic and unnotified) cases.
 
-From **fatality reports** (the number of newly reported deaths on each day), we use Monte Carlo simulation and estimated probability distributions to construct a synthetic **line list** of symptom onset times for all cases that are eventually notified. The average **delay from symptom onset to death**, estimated from data in the China outbreak outside Hubei, is 19.9 days^[Jung-mok Jung, *et al.* Real-Time Estimation of the Risk of Death from Novel Coronavirus (COVID-19) Infection: Inference Using Exported Cases. February 14, 2020, Journal of Clinical Medicine. <https://doi.org/10.3390/jcm9020523>]. Individual simulated symptom onset times are distributed according to a log normal distribution with a mean of 19.9 (standard deviation = 11.4).
+From **fatality reports** (the number of newly reported deaths on each day), we use Monte Carlo simulation and estimated probability distributions to construct a synthetic **line list** of symptom onset times for all cases that are eventually notified. The average **delay from symptom onset to death**, estimated from data in the China outbreak outside Hubei, is `r params.US$onset.to.death.period$mean` days^[Kenji Mizumoto, Gerardo Chowell. "Estimating the risk of 2019 Novel Coronavirus death during the course of the outbreak in China, 2020" medRxiv preprint. <https://doi.org/10.1101/2020.02.19.20025163>]. Individual simulated symptom onset times are distributed according to a `r params.US$onset.to.death.period$dist` distribution with a mean of `r params.US$onset.to.death.period$mean` (shape parameter = `r params.US$onset.to.death.period$shape`).
 
 Based on data from China, and correcting for demographics in Great Britain, Ferguson *et al.* estimated an Infection Fatality Rat (IFR) of 0.9% (95% CrI: 0.4%–1.4%)^[Neil M Ferguson, *et al*. Impact of non-pharmaceutical interventions (NPIs) to reduce COVID19 mortality and healthcare demand. March 16, 2020, Imperial College COVID-19 Response Team. <https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf>]. To account for IFR, we multiply the fatalities by $\frac{1}{0.9\%}$ before simulating the line list of symptom onset times. 
 
@@ -76,22 +81,19 @@ The resulting estimates of latent and infectious individuals are intended to rep
 
 ### Data sources
 
-**US Case Reports by State**
+**US case and fatailty reports by state**
 
-US data are maintained by [CEID](http://ceid.uga.edu) and available  [here](https://docs.google.com/spreadsheets/d/10NYNf4UX7R_nNdM-jkbo7A5SGkB8sUVMIiqU7e_-miU/edit#gid=0).
+Data are compiled daily from <https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases>, which is updated by anonymous contributors.
 
-Data are compiled from <https://en.wikipedia.org/wiki/2020_coronavirus_pandemic_in_the_United_States>, which is updated by anonymous contributors.
 
-We aim to update our dataset daily.
+<!-- **Fatalities by Country** -->
 
-**Fatalities by Country**
+<!-- Country level fatality data are maintained by [CEID](http://ceid.uga.edu) and available -->
+<!-- [here](https://docs.google.com/spreadsheets/d/1SC28cM52m6s1gTJutpvFxadT9GGu-li90tsqkGuaM48/edit#gid=219891324) on the tab called "Cumulative fatalities reported by country." -->
 
-Country level fatality data are maintained by [CEID](http://ceid.uga.edu) and available
-[here](https://docs.google.com/spreadsheets/d/1SC28cM52m6s1gTJutpvFxadT9GGu-li90tsqkGuaM48/edit#gid=219891324) on the tab called "Cumulative fatalities reported by country."
+<!-- Data are compiled from various sources, listed in the dataset.  -->
 
-Data are compiled from various sources, listed in the dataset. 
-
-We aim to update our dataset daily.
+<!-- We aim to update our dataset daily. -->
 
 
 

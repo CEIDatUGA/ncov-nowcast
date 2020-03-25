@@ -1,3 +1,6 @@
+library(tidyverse)
+library(tibbletime)
+library(padr)
 library(rvest)
 
 # Get case reports for US states
@@ -41,6 +44,7 @@ cases.US <- cases.US.wikipedia %>%
   tibbletime::as_tbl_time(index=Date) %>% 
   mutate(US = rowSums(.[,-1],na.rm = TRUE))
 
+remove(cases.US.wikipedia)
 saveRDS(cases.US,"data/cases.US.rds")
 
 # Get fatalities reports for US states
@@ -90,4 +94,5 @@ fatalities.US <- fatalities.US.wikipedia %>%
   tibbletime::as_tbl_time(index=Date) %>% 
   mutate(US = rowSums(.[,-1],na.rm = TRUE))
 
+remove(fatalities.US.wikipedia)
 saveRDS(fatalities.US,"data/fatalities.US.rds")

@@ -3,10 +3,10 @@ library(tibbletime)
 library(padr)
 library(tvReg)
 library(forecast)
-source('R/package.R')
-source('R/deconcolve.R')
-source('R/simple_tdar.R')
-source('R/package_tv.R')
+# source('R/package.R')
+# source('R/deconcolve.R')
+# source('R/simple_tdar.R')
+# source('R/package_tv.R')
 
 # functions
 
@@ -49,6 +49,54 @@ tail_na <- function(data, tail, columns=NULL) {
   return(d)
 }
 
+# get sd of distribution
+
+get_sd <- function(...){
+  interval <- list(...)[[1]]
+
+  if(is.numeric(interval)){
+    if(length(interval) == 1){
+      sd <- 0
+    }else{
+        sd <- sd(interval)
+    }
+    return(sd)
+  }
+
+  if(interval$dist == "exponential") {
+    if(is.null(interval$mean)) {stop("exponential distribution requires a mean")}
+    sd <- sqrt((1/interval$mean)^2)
+    return(sd)
+  }
+  
+  if(interval$dist == "gamma") {
+    if(is.null(interval$mean) | is.null(interval$shape)) {
+      stop("gamma distribution requires mean and shape")
+    }
+    scale <- interval$mean/interval$shape # gamma
+    sd <- sqrt(interval$shape*scale^2) # gamma
+    return(sd)
+  }
+  
+  if(interval$dist == "skewnormal") {
+    if(is.null(interval$mean) | is.null(interval$shape) | is.null(interval$scale)) {
+      stop("skewnormal distribution requires mean, shape and scale to find standard deviation")
+    }
+    delta <- interval$shape / (sqrt(1 + interval$shape^2))
+    variance <- interval$scale^2 * (1 - (2 * delta)/pi )
+    sd <- sqrt(variance)
+    return(sd)
+  }
+
+  if(interval$dist == "lognormal") {
+    if(is.null(interval$sd)) {
+      stop("Standard deviation must be supplied with lognormal distribution.")
+    }
+    return(interval$sd)
+  }
+
+}
+
 # function to calculate confidence intervals across rows of a dataframe
 rowwise_confidence_intervals <- function(df,interval) {
   out <- list()
@@ -65,9 +113,6 @@ rowwise_confidence_intervals <- function(df,interval) {
 }
 
 # Simulate from time varying distribution
-
-### Store interval distribution in rows of database
-
 
 ## Simulate a line list from dates, counts (such as case reports), and interval distribution
 
@@ -221,38 +266,41 @@ get_state <- function(date, linelist) {
 get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
   
-  if(is.numeric(interval)){
-    interval <- list(mean=interval[1], sd=0)
-  }else{
-    if(interval$dist == "exponential") {
-      interval$sd <- sqrt((1/interval$mean)^2) # exponential
-    }
-    if(interval$dist == "gamma") {
-      interval$scale <- interval$mean/interval$shape # gamma
-      interval$sd <- sqrt(interval$shape*interval$scale^2) # gamma
-    }
-    if(interval$dist == "skewnormal") {
-      # if SD provided as a parameter of interval, do nothing
-      # if sd not provided, 
-      if(missing(interval$sd)){
-        delta <- interval$shape / (sqrt(1 + interval$shape^2))
-        variance <- interval$scale^2 * (1 - (2 * delta)/pi )
-        interval$sd <- sqrt(variance) 
-      }
-    }
-    if(interval$dist == "lognormal") {
-      # Do nothing. sd must be provided
-    }
-  }
+  # if(is.numeric(interval)){
+  #   interval <- list(mean=interval[1], sd=0)
+  # }else{
+  #   if(interval$dist == "exponential") {
+  #     interval$sd <- sqrt((1/interval$mean)^2) # exponential
+  #   }
+  #   if(interval$dist == "gamma") {
+  #     interval$scale <- interval$mean/interval$shape # gamma
+  #     interval$sd <- sqrt(interval$shape*interval$scale^2) # gamma
+  #   }
+  #   if(interval$dist == "skewnormal") {
+  #     # if SD provided as a parameter of interval, do nothing
+  #     # if sd not provided, 
+  #     if(missing(interval$sd)){
+  #       delta <- interval$shape / (sqrt(1 + interval$shape^2))
+  #       variance <- interval$scale^2 * (1 - (2 * delta)/pi )
+  #       interval$sd <- sqrt(variance) 
+  #     }
+  #   }
+  #   if(interval$dist == "lognormal") {
+  #     # Do nothing. sd must be provided
+  #   }
+  # }
   
-  natail <- interval$mean+interval$sd*2
+  sd <- get_sd(interval)
+  natail <- interval$mean+sd*2
   if(!is.null(next_intervals)){
     for(i in 1:length(next_intervals)){
-      natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
+      natail <- natail + next_intervals[[i]]$mean+get_sd(next_intervals[[i]])*2
     }
   }
   
+  # cat("\n")
   values <- tail_na(values, round(natail))
+  # cat(values)
   
   state.curve <- tibble(
     date = dates, 
@@ -263,7 +311,7 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
 
 # forecast to present
 
-tvar_forecast_to_present <- function(curve,lag=1) {
+tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
   curve.trimmed <- trim_na(curve)
   trimmed.length <- length(curve.trimmed)
   forecast.length <- length(curve)-trimmed.length
@@ -278,7 +326,13 @@ tvar_forecast_to_present <- function(curve,lag=1) {
                                   p = lag,  # number of lags
                                   type = "none",  # model does not contain intercept
                                   est="ll", # "local linear" non parametric estimation method
-                                  tkernel = "Gaussian")
+                                  tkernel = "Gaussian",
+                                  bw=NULL)
+  ### TEMP PLOT
+  plot(log.curve.trimmed, type="l")
+  log.curve.model.tvar$fitted %>% lines(type="l", col="red")
+  title(main=paste('bw', log.curve.model.tvar$bw, 'p', log.curve.model.tvar$p))
+  ### END TEMP PLOT
   
   log.curve.forecast <- forecast::forecast(log.curve.model.tvar$fitted,forecast.length)
   
@@ -290,9 +344,9 @@ tvar_forecast_to_present <- function(curve,lag=1) {
                        pad_na(forecast.length),
                      mean = exp(log.curve.forecast$mean) %>% pmax(0) %>% 
                        pad_na(trimmed.length, front = TRUE),
-                     upper95 = exp(log.curve.forecast$upper[,'95%']) %>% pmax(0) %>% 
+                     upper80 = exp(log.curve.forecast$upper[,'80%']) %>% pmax(0) %>% 
                        pad_na(trimmed.length, front = TRUE),
-                     lower95 = exp(log.curve.forecast$lower[,'95%']) %>% pmax(0) %>%
+                     lower80 = exp(log.curve.forecast$lower[,'80%']) %>% pmax(0) %>%
                        pad_na(trimmed.length, front = TRUE)
                      )
   forecast
@@ -300,7 +354,7 @@ tvar_forecast_to_present <- function(curve,lag=1) {
 
 # nowcast from case reports
 
-nowcast_from_case_reports <- function(casereports, params) {
+nowcast_from_case_reports <- function(casereports, params, tvar.bandwith=NULL) {
   database <- casereports
   
   # Ascertainment
@@ -329,33 +383,39 @@ nowcast_from_case_reports <- function(casereports, params) {
   database$q[is.na(database$q)] <- 1
   database$q.upper[is.na(database$q.upper)] <- 1
   database$q.lower[is.na(database$q.lower)] <- 1
-  
+
   # database$a <- params$a # no longer used
   # database$c <- params$c # no longer used
   
   
   # Compensate for ascertainment (q)
   database$cases_over_q <- database$cases / database$q
-  if(is.list(params$q)){
-    database$cases_over_q.upper <- database$cases / database$q.lower
-    database$cases_over_q.lower <- database$cases / database$q.upper
-  }
+  
+  # Not using upper and lower estimates of q
+  # if(is.list(params$q)){
+  #   database$cases_over_q.upper <- database$cases / database$q.lower
+  #   database$cases_over_q.lower <- database$cases / database$q.upper
+  # }
+  # 
   
   # I linelist
   I.linelist <- backward_simulate_linelist(dates = database$Date,
                                            counts = database$cases_over_q,
                                            interval = params$effective.infectious.period)
-  if(is.list(params$q)){
-    # I linelist.upper
-    I.linelist.upper <- backward_simulate_linelist(dates = database$Date,
-                                             counts = database$cases_over_q.upper,
-                                             interval = params$effective.infectious.period)
-    
-    # I linelist.lower
-    I.linelist.lower <- backward_simulate_linelist(dates = database$Date,
-                                                   counts = database$cases_over_q.lower,
-                                                   interval = params$effective.infectious.period)
-  }
+  
+  # Not using upper and lower estimates of q
+  # if(is.list(params$q)) {
+  #   # I linelist.upper
+  #   I.linelist.upper <- backward_simulate_linelist(dates = database$Date,
+  #                                            counts = database$cases_over_q.upper,
+  #                                            interval = params$effective.infectious.period)
+  #   
+  #   # I linelist.lower
+  #   I.linelist.lower <- backward_simulate_linelist(dates = database$Date,
+  #                                                  counts = database$cases_over_q.lower,
+  #                                                  interval = params$effective.infectious.period)
+  # }
+ 
   
   # # I onset
   # I.onset <- get_onset_curve(dates = database$Date,
@@ -379,40 +439,43 @@ nowcast_from_case_reports <- function(casereports, params) {
                          linelist = I.linelist,
                          interval = params$effective.infectious.period)
   database$I <- I$value
-  
-  # I.upper
-  if(is.list(params$q)){
-    I.upper <- get_state_curve(dates = database$Date,
-                               linelist = I.linelist.upper,
-                               interval = params$effective.infectious.period)
-    database$I.upper <- I.upper$value
-  }else{
-    database$I.upper <-  database$I
-  }
 
-  # I.lower
-  if(is.list(params$q)){
-    I.lower <- get_state_curve(dates = database$Date,
-                               linelist = I.linelist.lower,
-                               interval = params$effective.infectious.period)
-    database$I.lower <- I.lower$value
-  }else{
-    database$I.lower <-  database$I
-  }
+  # Not using upper and lower estimates of q
+  # # I.upper
+  # if(is.list(params$q)){
+  #   I.upper <- get_state_curve(dates = database$Date,
+  #                              linelist = I.linelist.upper,
+  #                              interval = params$effective.infectious.period)
+  #   database$I.upper <- I.upper$value
+  # }else{
+  #   database$I.upper <-  database$I
+  # }
+  # 
+  # # I.lower
+  # if(is.list(params$q)){
+  #   I.lower <- get_state_curve(dates = database$Date,
+  #                              linelist = I.linelist.lower,
+  #                              interval = params$effective.infectious.period)
+  #   database$I.lower <- I.lower$value
+  # }else{
+  #   database$I.lower <-  database$I
+  # }
   
   # E linelist
   E.linelist <- backward_propagate_linelist(I.linelist,
                                             interval = params$incubation.period)
   
-  if(is.list(params$q)){
-    # E linelist.upper
-    E.linelist.upper <- backward_propagate_linelist(I.linelist.upper,
-                                              interval = params$incubation.period)
+  # Not using upper and lower estimates of q
+  # if(is.list(params$q)){
+  #   # E linelist.upper
+  #   E.linelist.upper <- backward_propagate_linelist(I.linelist.upper,
+  #                                             interval = params$incubation.period)
+  # 
+  #   # E linelist.lower
+  #   E.linelist.lower <- backward_propagate_linelist(I.linelist.lower,
+  #                                             interval = params$incubation.period)
+  # }
   
-    # E linelist.lower
-    E.linelist.lower <- backward_propagate_linelist(I.linelist.lower,
-                                              interval = params$incubation.period)
-  }
     # # E onset
   # E.onset <- get_onset_curve(dates = database$Date,
   #                            linelist = E.linelist,
@@ -437,169 +500,126 @@ nowcast_from_case_reports <- function(casereports, params) {
                        next_intervals = list(params$effective.infectious.period))
   database$E <- E$value
   
-  # E.upper
-  if(is.list(params$q)){
-    E.upper <- get_state_curve(dates = database$Date,
-                       linelist = E.linelist.upper,
-                       interval = params$incubation.period,
-                       next_intervals = list(params$effective.infectious.period))
-    database$E.upper <- E.upper$value
-  }else{
-    database$E.upper <- database$E
-  }
-
-  # E.lower
-  if(is.list(params$q)){
-    E.lower <- get_state_curve(dates = database$Date,
-                       linelist = E.linelist.lower,
-                       interval = params$incubation.period,
-                       next_intervals = list(params$effective.infectious.period))
-    database$E.lower <- E.lower$value
-  }else{
-    database$E.lower <- database$E
-  }
+  # Not using upper and lower estimates of q
+  # # E.upper
+  # if(is.list(params$q)){
+  #   E.upper <- get_state_curve(dates = database$Date,
+  #                      linelist = E.linelist.upper,
+  #                      interval = params$incubation.period,
+  #                      next_intervals = list(params$effective.infectious.period))
+  #   database$E.upper <- E.upper$value
+  # }else{
+  #   database$E.upper <- database$E
+  # }
+  # 
+  # # E.lower
+  # if(is.list(params$q)){
+  #   E.lower <- get_state_curve(dates = database$Date,
+  #                      linelist = E.linelist.lower,
+  #                      interval = params$incubation.period,
+  #                      next_intervals = list(params$effective.infectious.period))
+  #   database$E.lower <- E.lower$value
+  # }else{
+  #   database$E.lower <- database$E
+  # }
   
   # forecasting I
-  I.forecast <- tvar_forecast_to_present(database$I)
+  I.forecast <- tvar_forecast_to_present(database$I,bw=tvar.bandwith)
   database$I.fit <- I.forecast$fit
   database$I.forecast.mean <- I.forecast$mean
-  database$I.forecast.upper95 <- I.forecast$upper95
-  database$I.forecast.lower95 <- I.forecast$lower95
+  database$I.forecast.upper80 <- I.forecast$upper80
+  database$I.forecast.lower80 <- I.forecast$lower80
   
-  if(is.list(params$q)){
-    I.upper.forecast <- tvar_forecast_to_present(database$I.upper)
-    database$I.upper.fit <- I.upper.forecast$fit
-    database$I.upper.forecast.mean <- I.upper.forecast$mean
-    database$I.upper.forecast.lower95 <- I.upper.forecast$lower95
-    database$I.upper.forecast.upper95 <- I.upper.forecast$upper95
-    
-    I.lower.forecast <- tvar_forecast_to_present(database$I.lower)
-    database$I.lower.fit <- I.lower.forecast$fit
-    database$I.lower.forecast.mean <- I.lower.forecast$mean
-    database$I.lower.forecast.lower95 <- I.lower.forecast$lower95
-    database$I.lower.forecast.upper95 <- I.lower.forecast$upper95
-  }else{
-    database$I.upper.forecast.mean <- database$I.forecast.mean
-    database$I.upper.forecast.lower95 <- database$I.forecast.lower95 
-    database$I.upper.forecast.upper95 <- database$I.forecast.upper95 
-    database$I.lower.forecast.mean <- database$I.forecast.mean
-    database$I.lower.forecast.lower95 <- database$I.forecast.lower95 
-    database$I.lower.forecast.upper95 <- database$I.forecast.upper95 
-  }
-  
-  # if(params$q == 1){
-  #   database <- database %>% 
-  #     mutate(I.upper.fit = I.fit,
-  #            I.upper.forecast.mean = I.forecast.mean,
-  #            I.upper.forecast.upper95 = I.forecast.upper95,
-  #            I.upper.forecast.lower95 = I.forecast.lower95,
-  #            I.lower.fit = I.fit,
-  #            I.lower.forecast.mean = I.forecast.mean,
-  #            I.lower.forecast.upper95 = I.forecast.upper95,
-  #            I.lower.forecast.lower95 = I.forecast.lower95,
-  #            )
-  # }else{
+  # Not using upper and lower estimates of q
+  # if(is.list(params$q)){
   #   I.upper.forecast <- tvar_forecast_to_present(database$I.upper)
   #   database$I.upper.fit <- I.upper.forecast$fit
   #   database$I.upper.forecast.mean <- I.upper.forecast$mean
-  #   database$I.upper.forecast.lower95 <- I.upper.forecast$lower95
-  #   database$I.upper.forecast.upper95 <- I.upper.forecast$upper95
+  #   database$I.upper.forecast.lower80 <- I.upper.forecast$lower80
+  #   database$I.upper.forecast.upper80 <- I.upper.forecast$upper80
   #   
   #   I.lower.forecast <- tvar_forecast_to_present(database$I.lower)
   #   database$I.lower.fit <- I.lower.forecast$fit
   #   database$I.lower.forecast.mean <- I.lower.forecast$mean
-  #   database$I.lower.forecast.lower95 <- I.lower.forecast$lower95
-  #   database$I.lower.forecast.upper95 <- I.lower.forecast$upper95
+  #   database$I.lower.forecast.lower80 <- I.lower.forecast$lower80
+  #   database$I.lower.forecast.upper80 <- I.lower.forecast$upper80
+  # }else{
+  #   database$I.upper.forecast.mean <- database$I.forecast.mean
+  #   database$I.upper.forecast.lower80 <- database$I.forecast.lower80 
+  #   database$I.upper.forecast.upper80 <- database$I.forecast.upper80 
+  #   database$I.lower.forecast.mean <- database$I.forecast.mean
+  #   database$I.lower.forecast.lower80 <- database$I.forecast.lower80 
+  #   database$I.lower.forecast.upper80 <- database$I.forecast.upper80 
   # }
   
+  
   # forecasting E
-  E.forecast <- tvar_forecast_to_present(database$E)
+  E.forecast <- tvar_forecast_to_present(database$E, bw=tvar.bandwith)
   database$E.fit <- E.forecast$fit
   database$E.forecast.mean <- E.forecast$mean
-  database$E.forecast.upper95 <- E.forecast$upper95
-  database$E.forecast.lower95 <- E.forecast$lower95
+  database$E.forecast.upper80 <- E.forecast$upper80
+  database$E.forecast.lower80 <- E.forecast$lower80
   
-  if(is.list(params$q)){
-    E.upper.forecast <- tvar_forecast_to_present(database$E.upper)
-    database$E.upper.fit <- E.upper.forecast$fit
-    database$E.upper.forecast.mean <- E.upper.forecast$mean
-    database$E.upper.forecast.lower95 <- E.upper.forecast$lower95
-    database$E.upper.forecast.upper95 <- E.upper.forecast$upper95
-    
-    E.lower.forecast <- tvar_forecast_to_present(database$E.lower)
-    database$E.lower.fit <- E.lower.forecast$fit
-    database$E.lower.forecast.mean <- E.lower.forecast$mean
-    database$E.lower.forecast.lower95 <- E.lower.forecast$lower95
-    database$E.lower.forecast.upper95 <- E.lower.forecast$upper95
-  }else{
-    database$E.upper.forecast.mean <- database$E.forecast.mean
-    database$E.upper.forecast.lower95 <- database$E.forecast.lower95 
-    database$E.upper.forecast.upper95 <- database$E.forecast.upper95 
-    database$E.lower.forecast.mean <- database$E.forecast.mean
-    database$E.lower.forecast.lower95 <- database$E.forecast.lower95 
-    database$E.lower.forecast.upper95 <- database$E.forecast.upper95 
-  }
-  
-  # if(params$q == 1){
-  #   database <- database %>% 
-  #     mutate(E.upper.fit = E.fit,
-  #            E.upper.forecast.mean = E.forecast.mean,
-  #            E.upper.forecast.upper95 = E.forecast.upper95,
-  #            E.upper.forecast.lower95 = E.forecast.lower95,
-  #            E.lower.fit = E.fit,
-  #            E.lower.forecast.mean = E.forecast.mean,
-  #            E.lower.forecast.upper95 = E.forecast.upper95,
-  #            E.lower.forecast.lower95 = E.forecast.lower95,
-  #     )
-  # }else{
+  # Not using upper and lower estimates of q
+  # if(is.list(params$q)){
   #   E.upper.forecast <- tvar_forecast_to_present(database$E.upper)
   #   database$E.upper.fit <- E.upper.forecast$fit
   #   database$E.upper.forecast.mean <- E.upper.forecast$mean
-  #   database$E.upper.forecast.lower95 <- E.upper.forecast$lower95
-  #   database$E.upper.forecast.upper95 <- E.upper.forecast$upper95
+  #   database$E.upper.forecast.lower80 <- E.upper.forecast$lower80
+  #   database$E.upper.forecast.upper80 <- E.upper.forecast$upper80
   #   
   #   E.lower.forecast <- tvar_forecast_to_present(database$E.lower)
   #   database$E.lower.fit <- E.lower.forecast$fit
   #   database$E.lower.forecast.mean <- E.lower.forecast$mean
-  #   database$E.lower.forecast.lower95 <- E.lower.forecast$lower95
-  #   database$E.lower.forecast.upper95 <- E.lower.forecast$upper95
-  # }  
-  
-  # I composite bounds
-  
-  database <- database %>% 
-    mutate(I.nowcast.upper = rowSums(dplyr::select(., I.upper, I.upper.forecast.upper95), na.rm = TRUE),
-           I.nowcast.lower = rowSums(dplyr::select(., I.lower, I.lower.forecast.lower95), na.rm = TRUE)
-    )
-  
-  # E composite bounds
-  database <- database %>% 
-    mutate(E.nowcast.upper = rowSums(dplyr::select(., E.upper, E.upper.forecast.upper95), na.rm = TRUE),
-           E.nowcast.lower = rowSums(dplyr::select(., E.lower, E.lower.forecast.lower95), na.rm = TRUE)
-    )  
+  #   database$E.lower.forecast.lower80 <- E.lower.forecast$lower80
+  #   database$E.lower.forecast.upper80 <- E.lower.forecast$upper80
+  # }else{
+  #   database$E.upper.forecast.mean <- database$E.forecast.mean
+  #   database$E.upper.forecast.lower80 <- database$E.forecast.lower80 
+  #   database$E.upper.forecast.upper80 <- database$E.forecast.upper80 
+  #   database$E.lower.forecast.mean <- database$E.forecast.mean
+  #   database$E.lower.forecast.lower80 <- database$E.forecast.lower80 
+  #   database$E.lower.forecast.upper80 <- database$E.forecast.upper80 
+  # }
+
   
   # nowcast
   
-  database <- database %>%
-    mutate(nowcast.mean = rowSums(dplyr::select(., I, I.forecast.mean, E, E.forecast.mean), na.rm = TRUE),
-           nowcast.upper = rowSums(dplyr::select(., I.upper, I.upper.forecast.upper95, E.upper, E.upper.forecast.upper95), na.rm = TRUE),
-           nowcast.lower = rowSums(dplyr::select(., I.lower, I.lower.forecast.lower95, E.lower, E.lower.forecast.lower95), na.rm = TRUE)
-    )
+  # Not using upper and lower estimates of q
+  # ## I composite bounds
+  # 
+  # database <- database %>% 
+  #   mutate(I.nowcast.upper = rowSums(dplyr::select(., I.upper, I.upper.forecast.upper80), na.rm = TRUE),
+  #          I.nowcast.lower = rowSums(dplyr::select(., I.lower, I.lower.forecast.lower80), na.rm = TRUE)
+  #   )
+  # 
+  # ## E composite bounds
+  # database <- database %>% 
+  #   mutate(E.nowcast.upper = rowSums(dplyr::select(., E.upper, E.upper.forecast.upper80), na.rm = TRUE),
+  #          E.nowcast.lower = rowSums(dplyr::select(., E.lower, E.lower.forecast.lower80), na.rm = TRUE)
+  #   )  
+  # 
+  # ## nowcast and bounds
+  # database <- database %>%
+  #   mutate(nowcast.mean = rowSums(dplyr::select(., I, I.forecast.mean, E, E.forecast.mean), na.rm = TRUE),
+  #          nowcast.upper = rowSums(dplyr::select(., I.upper, I.upper.forecast.upper80, E.upper, E.upper.forecast.upper80), na.rm = TRUE),
+  #          nowcast.lower = rowSums(dplyr::select(., I.lower, I.lower.forecast.lower80, E.lower, E.lower.forecast.lower80), na.rm = TRUE)
+  #   )
 
   # alternate nowcast without propagating uncertainty in q to forecasts.
   
-  # database <- database %>% 
-  #   mutate(nowcast.mean = rowSums(dplyr::select(., I, I.forecast.mean, E, E.forecast.mean), na.rm = TRUE),
-  #          nowcast.upper = rowSums(dplyr::select(., I.upper, I.forecast.upper95, E.upper, E.forecast.upper95), na.rm = TRUE),
-  #          nowcast.lower = rowSums(dplyr::select(., I.lower, I.forecast.lower95, E.lower, E.forecast.lower95), na.rm = TRUE)
-  #   ) 
+  database <- database %>%
+    mutate(nowcast.mean = rowSums(dplyr::select(., I, I.forecast.mean, E, E.forecast.mean), na.rm = TRUE),
+           nowcast.upper = rowSums(dplyr::select(., I, I.forecast.upper80, E, E.forecast.upper80), na.rm = TRUE),
+           nowcast.lower = rowSums(dplyr::select(., I, I.forecast.lower80, E, E.forecast.lower80), na.rm = TRUE)
+    )
   
   return(database)
 }
 
 # nowcast from death reports using symtpom-onset-to-death
 
-nowcast_from_deaths_with_onset_to_death <- function(deathreports, params) {
+nowcast_from_deaths_with_onset_to_death <- function(deathreports, params,tvar.bandwith=NULL) {
   database <- deathreports
   # # Ascertainment - not used for death reports
   # if(is.null(params$q)){
@@ -665,25 +685,25 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports, params) {
   database$E <- E$value
   
   # forecasting I
-  I.forecast <- tvar_forecast_to_present(database$I)
+  I.forecast <- tvar_forecast_to_present(database$I, bw=tvar.bandwith)
   database$I.fit <- I.forecast$fit
   database$I.forecast.mean <- I.forecast$mean
-  database$I.forecast.lower95 <- I.forecast$lower95
-  database$I.forecast.upper95 <- I.forecast$upper95
+  database$I.forecast.lower80 <- I.forecast$lower80
+  database$I.forecast.upper80 <- I.forecast$upper80
   
   # forecasting E
-  E.forecast <- tvar_forecast_to_present(database$E)
+  E.forecast <- tvar_forecast_to_present(database$E, bw=tvar.bandwith)
   database$E.fit <- E.forecast$fit
   database$E.forecast.mean <- E.forecast$mean
-  database$E.forecast.lower95 <- E.forecast$lower95
-  database$E.forecast.upper95 <- E.forecast$upper95
+  database$E.forecast.lower80 <- E.forecast$lower80
+  database$E.forecast.upper80 <- E.forecast$upper80
   
   # nowcast
   
   database <- database %>% 
     mutate(nowcast.mean = rowSums(dplyr::select(., I, I.forecast.mean, E, E.forecast.mean), na.rm = TRUE),
-           nowcast.upper = rowSums(dplyr::select(., I, I.forecast.upper95, E, E.forecast.upper95), na.rm = TRUE),
-           nowcast.lower = rowSums(dplyr::select(., I, I.forecast.lower95, E, E.forecast.lower95), na.rm = TRUE)
+           nowcast.upper = rowSums(dplyr::select(., I, I.forecast.upper80, E, E.forecast.upper80), na.rm = TRUE),
+           nowcast.lower = rowSums(dplyr::select(., I, I.forecast.lower80, E, E.forecast.lower80), na.rm = TRUE)
     ) 
   return(database)
 }
@@ -717,13 +737,13 @@ get_ascertainment <- function(cases, deaths, params, window = 7) {
               lower.raw = nowcast.from.cases.lower / nowcast.from.deaths.lower) 
   
   # centred box moving average
-  ascertainment$mean = movingAverage(ascertainment$mean.raw, window = window, centered=TRUE)
+  ascertainment$mean <- movingAverage(ascertainment$mean.raw, window = window, centered=TRUE)
   ascertainment$mean[is.nan(ascertainment$mean)] <- NA
   
-  ascertainment$upper = movingAverage(ascertainment$upper.raw, window = window, centered=TRUE)
+  ascertainment$upper <- movingAverage(ascertainment$upper.raw, window = window, centered=TRUE)
   ascertainment$upper[is.nan(ascertainment$upper)] <- NA
   
-  ascertainment$lower = movingAverage(ascertainment$lower.raw, window = window, centered=TRUE)
+  ascertainment$lower <- movingAverage(ascertainment$lower.raw, window = window, centered=TRUE)
   ascertainment$lower[is.nan(ascertainment$lower.smooth)] <- NA
   
   lastvalue <- function(x) {tail(x[!is.na(x)],1)}
@@ -756,7 +776,7 @@ get_ascertainment <- function(cases, deaths, params, window = 7) {
 
 # plot nowcast from case reports
 
-plot_nowcast_from_case_reports <- function(database) {
+plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
   
   col.cases <- 'rgba(0, 0, 0, .75)'
   col.I <- 'rgba(230, 7, 7, .75)'
@@ -778,42 +798,42 @@ plot_nowcast_from_case_reports <- function(database) {
     plotly::add_trace(y = ~I, 
                       name = 'Symptomatic cases', mode = 'lines',
                       line = list(color = col.I, width = data.lwd),
-                      legendgroup = 'group3') %>%
+                      legendgroup = 'group2') %>%
     plotly::add_trace(y = ~I.forecast.mean, 
                       name = '(forecast average)', mode = 'lines',
                       line = list(color = col.I, width = mean.lwd, dash = 'dot'),
-                      legendgroup = 'group3') %>% 
-    plotly::add_ribbons(ymin = ~I.forecast.lower95, ymax = ~I.forecast.upper95,
+                      legendgroup = 'group2') %>% 
+    plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
                         name = '(credible interval)', mode='lines',
                         line = list(color = col.I, width = ci.lwd),
                         fillcolor = col.I.ci,
-                        legendgroup = 'group3') %>% 
+                        legendgroup = 'group2') %>% 
     
     plotly::add_trace(y = ~E, 
                       name = 'Latent cases', mode = 'lines',
                       line = list(color = col.E, width = data.lwd),
-                      legendgroup = 'group4') %>%
+                      legendgroup = 'group3') %>%
     plotly::add_trace(y = ~E.forecast.mean, 
                       name = '(forecast average)', mode = 'lines',
                       line = list(color = col.E, width = mean.lwd, dash = 'dot'),
-                      legendgroup = 'group4') %>% 
-    plotly::add_ribbons(ymin = ~E.forecast.lower95, ymax = ~E.forecast.upper95,
+                      legendgroup = 'group3') %>% 
+    plotly::add_ribbons(ymin = ~E.forecast.lower80, ymax = ~E.forecast.upper80,
                         name = '(credible interval)', mode='lines',
                         line = list(color = col.E, width = ci.lwd),
                         fillcolor = col.E.ci,
-                        legendgroup = 'group4') %>% 
+                        legendgroup = 'group3') %>% 
     
     plotly::add_trace(y = ~nowcast.mean, 
                       name = 'Total unnotified cases', mode = 'lines',
                       line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
-                      legendgroup = 'group2') %>% 
+                      legendgroup = 'group4') %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
                         name = '(credible interval)', mode='lines',
                         line = list(color = col.nowcast, width = ci.lwd),
                         fillcolor = col.nowcast.ci,
-                        legendgroup = 'group2')
+                        legendgroup = 'group4')
   
-  p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)),
+  p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,log10(maxy))),
                                                  # legend = list()
                                                  showlegend = FALSE
                                                  )
@@ -822,7 +842,7 @@ plot_nowcast_from_case_reports <- function(database) {
 
 # plot nowcast from death reports
 
-plot_nowcast_from_death_reports <- function(database) {
+plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
   
   col.cases <- 'rgba(0, 0, 0, 1)'
   col.I <- 'rgba(230, 7, 7, .75)'
@@ -849,7 +869,7 @@ plot_nowcast_from_death_reports <- function(database) {
                       name = '(forecast average)', mode = 'lines',
                       line = list(color = col.I, width = mean.lwd, dash = 'dot'),
                       legendgroup = 'group2') %>% 
-    plotly::add_ribbons(ymin = ~I.forecast.lower95, ymax = ~I.forecast.upper95,
+    plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
                         name = '(credible interval)', mode='lines',
                         line = list(color = col.I, width = ci.lwd),
                         fillcolor = col.I.ci,
@@ -863,7 +883,7 @@ plot_nowcast_from_death_reports <- function(database) {
                       name = '(forecast average)', mode = 'lines',
                       line = list(color = col.E, width = mean.lwd, dash = 'dot'),
                       legendgroup = 'group3') %>% 
-    plotly::add_ribbons(ymin = ~E.forecast.lower95, ymax = ~E.forecast.upper95,
+    plotly::add_ribbons(ymin = ~E.forecast.lower80, ymax = ~E.forecast.upper80,
                         name = '(credible interval)', mode='lines',
                         line = list(color = col.E, width = ci.lwd),
                         fillcolor = col.E.ci,
@@ -872,15 +892,15 @@ plot_nowcast_from_death_reports <- function(database) {
     plotly::add_trace(y = ~nowcast.mean, 
                       name = 'Total unnotified cases', mode = 'lines',
                       line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
-                      legendgroup = 'group1') %>% 
+                      legendgroup = 'group4') %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
                         name = '(credible interval)', mode='lines',
                         line = list(color = col.nowcast, width = ci.lwd),
                         fillcolor = col.nowcast.ci,
-                        legendgroup = 'group1')
+                        legendgroup = 'group4')
   
   p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", 
-                                                              range=c(-.25,7),
+                                                              range=c(-.25,log10(maxy)),
                                                               title = "Number"),
                                                  # legend = list()
                                                  showlegend = FALSE
@@ -888,7 +908,35 @@ plot_nowcast_from_death_reports <- function(database) {
   p_nowcast_logy
 }
 
-
+plot_ascertainment <- function(ascertainment){
+  col.cases <- 'rgba(0, 0, 0, 1)'
+  col.I <- 'rgba(230, 7, 7, .75)'
+  col.I.ci <- 'rgba(230, 7, 7, .25)'
+  col.E <- 'rgba(7, 164, 181, 0.75)'
+  col.E.ci <- 'rgba(7, 164, 181, 0.0)'
+  col.nowcast <- 'rgba(7, 7, 230, 0.75)'
+  col.nowcast.ci <- 'rgba(7, 7, 230, 0.25)'
+  col.other = 'rgb(164, 0, 181, .75)'         
+  col.other.ci = 'rgb(164, 0, 181, .25)'
+  
+  ci.lwd <- .5
+  mean.lwd <- 1
+  data.lwd <- 2
+  
+  
+  p_ascertainment <- plotly::plot_ly(data = ascertainment, x = ~Date , y = ~mean, type = 'scatter',
+                                     name = 'Ascertainment %', mode = 'lines',
+                                     line = list(color = col.other, width = data.lwd)
+  ) %>%
+    plotly::add_trace(y = ~lower,
+                      name = 'upper 80% confidence', mode = 'lines',
+                      line = list(color = col.other, width = ci.lwd, dash = 'dot')) %>%
+    plotly::add_trace(y = ~upper,
+                      name = 'lower 80% confidence', mode = 'lines',
+                      line = list(color = col.other, width = ci.lwd)) %>%
+    plotly::layout(yaxis = list(type = "log",tickformat = ".2%",title="Ascertainment %"))
+  p_ascertainment
+}
 
 
 # Smoother

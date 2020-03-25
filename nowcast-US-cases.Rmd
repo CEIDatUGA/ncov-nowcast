@@ -6,91 +6,117 @@ output:
     df_print: paged
 ---
 
+<!-- Knit this page first -->
+
 ```{r setup, include=FALSE}
 
-library(tidyverse)
-library(tibbletime)
-library(padr)
-library(tvReg)
-library(forecast)
-source('R/package.R')
-source('R/deconcolve.R')
-source('R/simple_tdar.R')
-source('R/package_tv.R')
 source('R/nowcast.R')
+source('R/data.R')
 
 ```
 
 <!-- Set params for US -->
-```{r params, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
-US.params <- list(admin = "US", # state or country
-                  # q = 1, # Detection probability
-                  a = 0.346, # Proportion of cases that are asymptomatic
-                  # c = 1, # Transmissability of undetectable cases
-                  # effective.infectious.period = list(dist="exponential", mean=2.67),
-                  effective.infectious.period = list(dist="gamma", mean=4.4, shape=1.9816403),
-                  infectious.period = list(dist="exponential", mean=7),
-                  incubation.period = list(dist="gamma", mean=7.67, shape=4.1775942)
-                  )
+```{r params, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+params.US <- list(
+  admin = "US", # state or country
+  
+  # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf
+  IFR = .009, 
+  
+  # ascertainment (calculated and added later)
+  # q = 1,
+
+  # accepted value
+  infectious.period = list(dist="exponential", mean=7),   
+  
+  # our analysis onset-to-reporting
+  effective.infectious.period = list(dist="gamma", mean=5.95, shape=2.2788163), 
+  
+  # our analysis of US data
+  incubation.period = list(dist="gamma", mean=5.89, shape=2.4265511), 
+  
+  # Our analysis of US data (not used)
+  # report.to.death.period = list(dist="skewnormal", mean = 1.33, sd = sqrt(11.06),
+  #                               location = -2.388990, # xi
+  #                               scale = 4.322, # omega
+  #                               shape = 1.447), # alpha
+  # 
+  # from China data: lognormal distribution with location 2.84, scale 0.52 
+  # (Jung et al.) https://doi.org/10.3390/jcm9020523 
+  # onset.to.death.period = list(dist="lognormal", mean = 19.9, sd = 11.4)
+  
+  # from China data: Kenji Mizumoto, Gerardo Chowell. "Estimating the risk of 2019 Novel Coronavirus death during the course of the outbreak in China, 2020" medRxiv preprint. https://doi.org/10.1101/2020.02.19.20025163
+  onset.to.death.period = list(dist="gamma", mean = 16, shape = 4)
+)
+
 ```
 
-<!-- Get case reports for US states -->
+<!-- Get reports for US states -->
 ```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-# read data directly from google sheet.
 
-# sheet <- "https://docs.google.com/spreadsheets/d/10NYNf4UX7R_nNdM-jkbo7A5SGkB8sUVMIiqU7e_-miU/edit#gid=0"
-# 
-# US <- googlesheets4::sheets_read(sheet)
-# 
-# US <- US %>% 
-#   rename_all(list(~make.names(.))) %>% 
-#   mutate_if(is.list, fixcolumns) %>% 
-#   mutate(Date = as.Date(Date)) %>% 
-#   padr::pad(start_val = as.Date("2019-12-01")) %>%
-#   replace(., is.na(.), 0) %>%
-#   tibbletime::as_tbl_time(index=Date) %>% 
-#   mutate(US = rowSums(.[,-1],na.rm = TRUE))
+cases.US <- readRDS('data/cases.US.rds')
+fatalities.US <- readRDS('data/fatalities.US.rds')
 
-
-# Scrape Wikipedia
-
-library(rvest)
-url <- "https://en.wikipedia.org/wiki/2020_coronavirus_pandemic_in_the_United_States"
-
-US.wikipedia <- url %>%
-  html() %>%
-  html_nodes(xpath='//*[@id="mw-content-text"]/div/div[25]/table/tbody/tr[2]/td/table') %>%
-  html_table(fill = TRUE)
-US.wikipedia <- US.wikipedia[[1]]
-names(US.wikipedia) <- US.wikipedia[1,]
-US.wikipedia <- US.wikipedia[2:(nrow(US.wikipedia)-5),1:(ncol(US.wikipedia)-6)]
-
-US.wikipedia$Date <- paste(US.wikipedia$Date, "2020") %>% 
-  as.Date("%b %d %Y")
-
-US <- US.wikipedia %>%
-  mutate_if(sapply(US.wikipedia, is.character), as.numeric) %>% 
-  rename_all(list(~make.names(.))) %>% 
-  padr::pad(start_val = as.Date("2019-12-01")) %>%
-  replace(., is.na(.), 0) %>%
-  tibbletime::as_tbl_time(index=Date) %>% 
-  mutate(US = rowSums(.[,-1],na.rm = TRUE))
-
-# Remove last row
-US.wikipedia <- US.wikipedia[-nrow(US.wikipedia),]
+cases.US.all <- cases.US %>% dplyr::select(Date, cases = US)
+fatalities.US.all <- fatalities.US %>% dplyr::select(Date, deaths = US)
 
 ```
 
-<!-- calculate nowcasts for US states -->
-```{r nowcasts, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+<!-- Get q (ascertainment) -->
+```{r ascertainment, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+
+# calculate and load ascertainment (time varying q with upper and lower bounds)
+
+params.US$q <- get_ascertainment(cases.US.all, fatalities.US.all, params.US, window = 7)
+saveRDS(params.US,"data/params.US.rds")
+
+# ## alternate contant q
+# 
+# params.US$q <- mean(params.US$q$mean.raw)
+# 
+# ## alternate q = grand mean
+# 
+# params.US$q <- list(mean = mean(params.US$q$mean.raw), 
+#                     upper = mean(params.US$q$upper.raw), 
+#                     lower = mean(params.US$q$lower.raw))
+
+```
+
+## {.tabset .tabset-fade}
+
+### USA
+<!-- calculate nowcasts for entire US  -->
+```{r nowcast_US, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 
 get_US_nowcast <- function(state) {
-  US %>% select(Date, cases = state) %>% 
-    tbl_time(index = Date) %>% nowcast_from_case_reports(US.params)
+  cases.US %>% select(Date, cases = state) %>% 
+    tbl_time(index = Date) %>% nowcast_from_case_reports(params.US)
 }
 
 US.all <- get_US_nowcast("US")
-saveRDS(US.all,"US.nowcast.from.cases.rds")
+# saveRDS(US.all,"US.nowcast.from.cases.rds")
+
+```
+
+```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(US.all) # %>% layout(showlegend = TRUE)
+```
+
+<!-- ```{r uncorrected} -->
+
+<!-- params.US.uncorrected <- params.US -->
+<!-- params.US.uncorrected$q <- 1 -->
+
+<!-- US.all.uncorrected <- nowcast_from_case_reports(cases.US.all, params.US.uncorrected) -->
+
+<!-- plot_nowcast_from_case_reports(US.all.uncorrected) %>% layout(showlegend = TRUE) -->
+
+<!-- ``` -->
+
+
+<!-- calculate nowcasts for US states -->
+```{r nowcast_states, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 
 AK <- get_US_nowcast("AK")
 AL <- get_US_nowcast("AL")
@@ -141,13 +167,6 @@ VT <- get_US_nowcast("VT")
 WA <- get_US_nowcast("WA")
 WI <- get_US_nowcast("WI")
 WY <- get_US_nowcast("WY")
-```
-
-## {.tabset .tabset-fade}
-
-### USA
-```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(US.all)
 ```
 
 ### AK
@@ -397,4 +416,23 @@ plot_nowcast_from_case_reports(WY)
 
 ## ![](nowcast-legend-cases.png)
 
+### Parameters
 
+### Parameters
+
+**Infection fatality rate** = `r params.US$IFR`
+
+**Symptom-onset-to-reporting interval:**  
+Distribution: `r params.US$effective.infectious.period$dist`  
+Mean = `r params.US$effective.infectious.period$mean`  
+Shape = `r params.US$effective.infectious.period$shape`
+
+**Incubation period:**  
+Distribution: `r params.US$incubation.period$dist`  
+Mean = `r params.US$incubation.period$mean`  
+Shape = `r params.US$incubation.period$shape`
+
+**Symmptom-onset-to-death interval:**  
+Distribution: `r params.US$onset.to.death.period$dist`  
+Mean = `r params.US$onset.to.death.period$mean`  
+Shape = `r params.US$onset.to.death.period$shape`  
