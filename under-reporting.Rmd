@@ -28,7 +28,7 @@ We then perform a nowcast from case reports without applying any correction for 
 
 The ratio of the two estimates (nowcasts) on any given day is an estimate of the **ascertainment rate**.
 
-$$\text{ascertainment rate for nowcasting from case reports} = \frac{\text{nowcast from case reports without correction}}{\text{nowcast from fatalities corrected for IFR}}$$
+<!-- $$\text{ascertainment rate for nowcasting from case reports} = \frac{\text{nowcast from case reports without correction}}{\text{nowcast from fatalities corrected for IFR}}$$ -->
 
 We then apply the mean ascertainment rate to the nowcast from cases to adjust for incomplete case reporting.
 
