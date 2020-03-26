@@ -7,22 +7,21 @@
 
 <!-- badges: end -->
 
-Contact: Tim Wildauer (<twildauer@blc.edu>) - deconvolution
+Contact: Eric Marty (<emarty@uga.edu>)
 
-Contributors: John Drake (<jdrake@uga.edu>)  
-Eric Marty (<emarty@uga.edu>) - visualization Rachel Mercaldo
-(<mercaldo@uga.edu>) - forecasting
-
-Initial work was done in <https://github.com/timrwild/2019CoV> and is
-being moved into this repo now.
+Contributors:  
+Tim Wildauer (<twildauer@blc.edu>) - deconvolution John Drake
+(<jdrake@uga.edu>)  
+Eric Marty (<emarty@uga.edu>) - visualization, nowcast architecture
+Rachel Mercaldo (<mercaldo@uga.edu>) - forecasting
 
 ## Contributing
 
   - Code for functions should go in scripts in the R/ folder.
   - High level scripts or Rmd documents should go at the top level.
-  - data is in the /data folder. NOTE: use the data in the folder for
-    now; Eric is working on a script to pull it from the google sheet
-    where it is kept updated.
+  - Temporary data products are in the /data folder.
+  - Source data is pulled directly from wikipedia or from
+    <https://github.com/CEIDatUGA/COVID-19-DATA>
 
 ## Objective
 

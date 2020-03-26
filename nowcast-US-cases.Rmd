@@ -103,6 +103,8 @@ US.all <- get_US_nowcast("US")
 plot_nowcast_from_case_reports(US.all) # %>% layout(showlegend = TRUE)
 ```
 
+The nowcast for the whole US is calculated from case reports at the national level. It is not the sum of the state level nowcasts. The nowcast for the whole US does not necessarily agree with the the sum of state level nowcasts.
+
 <!-- ```{r uncorrected} -->
 
 <!-- params.US.uncorrected <- params.US -->
