@@ -95,15 +95,13 @@ get_US_nowcast <- function(state) {
 }
 
 US.all <- get_US_nowcast("US")
-# saveRDS(US.all,"US.nowcast.from.cases.rds")
+# saveRDS(US.all,"data/US.nowcast.from.cases.rds")
 
 ```
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(US.all) # %>% layout(showlegend = TRUE)
 ```
-
-The nowcast for the whole US is calculated from case reports at the national level. It is not the sum of the state level nowcasts. The nowcast for the whole US does not necessarily agree with the the sum of state level nowcasts.
 
 <!-- ```{r uncorrected} -->
 
@@ -133,6 +131,7 @@ FL <- get_US_nowcast("FL")
 GA <- get_US_nowcast("GA")
 HI <- get_US_nowcast("HI")
 IA <- get_US_nowcast("IA")
+ID <- get_US_nowcast("ID")
 IL <- get_US_nowcast("IL")
 IN <- get_US_nowcast("IN")
 KS <- get_US_nowcast("KS")
@@ -234,6 +233,11 @@ plot_nowcast_from_case_reports(HI)
 ### IA
 ```{r IA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(IA)
+```
+
+### ID
+```{r ID, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(ID)
 ```
 
 ### IL
@@ -418,7 +422,7 @@ plot_nowcast_from_case_reports(WY)
 
 ## ![](nowcast-legend-cases.png)
 
-### Parameters
+The nowcast for the whole US is calculated from case reports at the national level. It is not the sum of the state level nowcasts. The nowcast for the whole US does not necessarily agree with the the sum of state level nowcasts.
 
 ### Parameters
 

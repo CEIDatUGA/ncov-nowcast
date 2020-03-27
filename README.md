@@ -25,8 +25,7 @@ Rachel Mercaldo (<mercaldo@uga.edu>) - forecasting
 
 ## Objective
 
-Estimate a generative model of transmission from infected to uninfected
-administrative units.
+Estimate the current size of the epidemic.
 
 ## Rationale
 

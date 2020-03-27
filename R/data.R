@@ -42,7 +42,8 @@ cases.US <- cases.US.wikipedia %>%
   padr::pad(start_val = as.Date("2019-12-01")) %>%
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date) %>% 
-  mutate(US = rowSums(.[,-1],na.rm = TRUE))
+  mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
+  filter(Date < Sys.Date())
 
 remove(cases.US.wikipedia)
 saveRDS(cases.US,"data/cases.US.rds")
@@ -92,7 +93,8 @@ fatalities.US <- fatalities.US.wikipedia %>%
   padr::pad(start_val = as.Date("2019-12-01")) %>%
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date) %>% 
-  mutate(US = rowSums(.[,-1],na.rm = TRUE))
+  mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
+  filter(Date < Sys.Date())
 
 remove(fatalities.US.wikipedia)
 saveRDS(fatalities.US,"data/fatalities.US.rds")
