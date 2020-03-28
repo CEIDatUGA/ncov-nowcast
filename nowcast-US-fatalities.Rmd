@@ -47,70 +47,66 @@ US.all <- get_US_nowcast("US")
 
 ```
 
-<!-- <!-- calculate nowcast for US --> -->
-<!-- ```{r nowcasts, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE} -->
-<!-- fatalities.US.all <- fatalities.US %>% dplyr::select(Date, deaths = US) -->
-
-<!-- US.nowcast <- nowcast_from_deaths_with_onset_to_death(deathreports = fatalities.US.all, params.US) -->
-<!-- # saveRDS(US.nowcast,"data/US.nowcast.from.fatalities.rds") -->
-<!-- ``` -->
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_death_reports(US.all) # %>% plotly::layout(showlegend=TRUE)
+
+# fatalities.maxdaily <- sapply(fatalities.US[,-1], max, na.rm = TRUE)
+# which(fatalities.maxdaily >= 10)
 ```
 <!-- calculate nowcasts for US states -->
 ```{r nowcast_states, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 
-AK <- get_US_nowcast("AK")
-AL <- get_US_nowcast("AL")
-AR <- get_US_nowcast("AR")
-AZ <- get_US_nowcast("AZ")
+# AK <- get_US_nowcast("AK")
+# AL <- get_US_nowcast("AL")
+# AR <- get_US_nowcast("AR")
+# AZ <- get_US_nowcast("AZ")
 CA <- get_US_nowcast("CA")
 CO <- get_US_nowcast("CO")
-CT <- get_US_nowcast("CT")
-DC <- get_US_nowcast("DC")
-DE <- get_US_nowcast("DE")
+# CT <- get_US_nowcast("CT")
+# DC <- get_US_nowcast("DC")
+# DE <- get_US_nowcast("DE")
 FL <- get_US_nowcast("FL")
 GA <- get_US_nowcast("GA")
-HI <- get_US_nowcast("HI")
-IA <- get_US_nowcast("IA")
-ID <- get_US_nowcast("ID")
-IL <- get_US_nowcast("IL")
-IN <- get_US_nowcast("IN")
-KS <- get_US_nowcast("KS")
-KY <- get_US_nowcast("KY")
+# HI <- get_US_nowcast("HI")
+# IA <- get_US_nowcast("IA")
+# ID <- get_US_nowcast("ID")
+# IL <- get_US_nowcast("IL")
+# IN <- get_US_nowcast("IN")
+# KS <- get_US_nowcast("KS")
+# KY <- get_US_nowcast("KY")
 LA <- get_US_nowcast("LA")
 MA <- get_US_nowcast("MA")
-MD <- get_US_nowcast("MD")
-ME <- get_US_nowcast("ME")
+# MD <- get_US_nowcast("MD")
+# ME <- get_US_nowcast("ME")
 MI <- get_US_nowcast("MI")
-MN <- get_US_nowcast("MN")
-MO <- get_US_nowcast("MO")
-MS <- get_US_nowcast("MS")
-MT <- get_US_nowcast("MT")
-NC <- get_US_nowcast("NC")
-ND <- get_US_nowcast("ND")
-NE <- get_US_nowcast("NE")
-NH <- get_US_nowcast("NH")
+# MN <- get_US_nowcast("MN")
+# MO <- get_US_nowcast("MO")
+# MS <- get_US_nowcast("MS")
+# MT <- get_US_nowcast("MT")
+# NC <- get_US_nowcast("NC")
+# ND <- get_US_nowcast("ND")
+# NE <- get_US_nowcast("NE")
+# NH <- get_US_nowcast("NH")
 NJ <- get_US_nowcast("NJ")
-NM <- get_US_nowcast("NM")
-NV <- get_US_nowcast("NV")
+# NM <- get_US_nowcast("NM")
+# NV <- get_US_nowcast("NV")
 NY <- get_US_nowcast("NY")
-OH <- get_US_nowcast("OH")
-OK <- get_US_nowcast("OK")
-OR <- get_US_nowcast("OR")
-PA <- get_US_nowcast("PA")
-RI <- get_US_nowcast("RI")
-SC <- get_US_nowcast("SC")
-SD <- get_US_nowcast("SD")
-TN <- get_US_nowcast("TN")
-TX <- get_US_nowcast("TX")
-UT <- get_US_nowcast("UT")
-VA <- get_US_nowcast("VA")
-VT <- get_US_nowcast("VT")
+# OH <- get_US_nowcast("OH")
+# OK <- get_US_nowcast("OK")
+# OR <- get_US_nowcast("OR")
+# PA <- get_US_nowcast("PA")
+# RI <- get_US_nowcast("RI")
+# SC <- get_US_nowcast("SC")
+# SD <- get_US_nowcast("SD")
+# TN <- get_US_nowcast("TN")
+# TX <- get_US_nowcast("TX")
+# UT <- get_US_nowcast("UT")
+# VA <- get_US_nowcast("VA")
+# VT <- get_US_nowcast("VT")
 WA <- get_US_nowcast("WA")
-WI <- get_US_nowcast("WI")
-WY <- get_US_nowcast("WY")
+# WI <- get_US_nowcast("WI")
+# WY <- get_US_nowcast("WY")
 ```
 
 <!-- ### AK -->
@@ -208,10 +204,10 @@ plot_nowcast_from_death_reports(GA)
 plot_nowcast_from_death_reports(LA)
 ```
 
-<!-- ### MA -->
-<!-- ```{r MA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
-<!-- plot_nowcast_from_death_reports(MA) -->
-<!-- ``` -->
+### MA
+```{r MA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_death_reports(MA)
+```
 
 <!-- ### MD -->
 <!-- ```{r MD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
@@ -268,10 +264,10 @@ plot_nowcast_from_death_reports(MI)
 <!-- plot_nowcast_from_death_reports(NH) -->
 <!-- ``` -->
 
-<!-- ### NJ -->
-<!-- ```{r NJ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
-<!-- plot_nowcast_from_death_reports(NJ) -->
-<!-- ``` -->
+### NJ
+```{r NJ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_death_reports(NJ)
+```
 
 <!-- ### NM -->
 <!-- ```{r NM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
