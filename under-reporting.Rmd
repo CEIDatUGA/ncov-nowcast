@@ -41,10 +41,12 @@ params.US <- readRDS('data/params.US.rds')
 
 ```{r plot, echo = FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 
-plot_ascertainment(params.US$q)
+plot_ascertainment(params.US$q) %>% plotly::layout(showlegend = FALSE)
 
 
 ```
+
+![](nowcast-legend-ascertainment.png)
 
 ### Parameters
 

@@ -71,7 +71,7 @@ GA <- get_US_nowcast("GA")
 # HI <- get_US_nowcast("HI")
 # IA <- get_US_nowcast("IA")
 # ID <- get_US_nowcast("ID")
-# IL <- get_US_nowcast("IL")
+IL <- get_US_nowcast("IL")
 # IN <- get_US_nowcast("IN")
 # KS <- get_US_nowcast("KS")
 # KY <- get_US_nowcast("KY")
@@ -95,7 +95,7 @@ NY <- get_US_nowcast("NY")
 # OH <- get_US_nowcast("OH")
 # OK <- get_US_nowcast("OK")
 # OR <- get_US_nowcast("OR")
-# PA <- get_US_nowcast("PA")
+PA <- get_US_nowcast("PA")
 # RI <- get_US_nowcast("RI")
 # SC <- get_US_nowcast("SC")
 # SD <- get_US_nowcast("SD")
@@ -179,10 +179,10 @@ plot_nowcast_from_death_reports(GA)
 <!-- plot_nowcast_from_death_reports(ID) -->
 <!-- ``` -->
 
-<!-- ### IL -->
-<!-- ```{r IL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
-<!-- plot_nowcast_from_death_reports(IL) -->
-<!-- ``` -->
+### IL
+```{r IL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_death_reports(IL)
+```
 
 <!-- ### IN -->
 <!-- ```{r IN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
@@ -299,10 +299,10 @@ plot_nowcast_from_death_reports(NY)
 <!-- plot_nowcast_from_death_reports(OR) -->
 <!-- ``` -->
 
-<!-- ### PA -->
-<!-- ```{r PA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
-<!-- plot_nowcast_from_death_reports(PA) -->
-<!-- ``` -->
+### PA
+```{r PA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_death_reports(PA)
+```
 
 <!-- ### RI -->
 <!-- ```{r RI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
