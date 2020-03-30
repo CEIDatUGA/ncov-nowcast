@@ -49,6 +49,9 @@ US.all <- get_US_nowcast("US")
 
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p <- plot_nowcast_from_death_reports(US.all) %>% plotly::layout(showlegend=TRUE)
+htmlwidgets::saveWidget(p, "USnowcast_plot.html")
+
 plot_nowcast_from_death_reports(US.all) # %>% plotly::layout(showlegend=TRUE)
 
 # fatalities.maxdaily <- sapply(fatalities.US[,-1], max, na.rm = TRUE)
