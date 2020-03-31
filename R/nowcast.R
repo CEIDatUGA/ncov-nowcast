@@ -619,7 +619,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwith=NULL) {
 
 # nowcast from death reports using symtpom-onset-to-death
 
-nowcast_from_deaths_with_onset_to_death <- function(deathreports, params,tvar.bandwith=NULL) {
+nowcast_from_deaths_with_onset_to_death <- function(deathreports, params, tvar.bandwith=NULL) {
   database <- deathreports
   # # Ascertainment - not used for death reports
   # if(is.null(params$q)){
@@ -778,7 +778,7 @@ get_ascertainment <- function(cases, deaths, params, window = 7) {
 
 plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
   
-  col.cases <- 'rgba(0, 0, 0, .75)'
+  col.cases <- 'rgba(0, 0, 0, .35)'
   col.I <- 'rgba(230, 7, 7, .75)'
   col.I.ci <- 'rgba(230, 7, 7, .15)'
   col.E <- 'rgba(7, 164, 181, 0.75)'
@@ -790,17 +790,22 @@ plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
   mean.lwd <- 1
   data.lwd <- 2
   
-  p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
-                               name = 'Case notifications', mode = 'lines',
-                               line = list(color = col.cases, width = data.lwd),
-                               legendgroup = 'group1'
-                               ) %>% 
+  # p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+  #                              name = 'Case notifications', mode = 'lines',
+  #                              line = list(color = col.cases, width = data.lwd),
+  #                              legendgroup = 'group1'
+  #                              ) %>% 
+  p_nowcast <- plotly::plot_ly(data = database, x = ~Date) %>% 
+    plotly::add_trace(y = ~cases, type = 'bar',
+                               name = 'Case notifications',
+                               marker = list(color = col.cases),
+                               legendgroup = 'group1') %>% 
     plotly::add_trace(y = ~I, 
-                      name = 'Symptomatic cases', mode = 'lines',
+                      name = 'Symptomatic cases', type = 'scatter', mode = 'lines',
                       line = list(color = col.I, width = data.lwd),
                       legendgroup = 'group2') %>%
     plotly::add_trace(y = ~I.forecast.mean, 
-                      name = '(forecast average)', mode = 'lines',
+                      name = '(forecast average)', type = 'scatter', mode = 'lines',
                       line = list(color = col.I, width = mean.lwd, dash = 'dot'),
                       legendgroup = 'group2') %>% 
     plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
@@ -810,21 +815,21 @@ plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
                         legendgroup = 'group2') %>% 
     
     plotly::add_trace(y = ~E, 
-                      name = 'Latent cases', mode = 'lines',
+                      name = 'Latent cases', type = 'scatter', mode = 'lines',
                       line = list(color = col.E, width = data.lwd),
                       legendgroup = 'group3') %>%
     plotly::add_trace(y = ~E.forecast.mean, 
-                      name = '(forecast average)', mode = 'lines',
+                      name = '(forecast average)', type = 'scatter', mode = 'lines',
                       line = list(color = col.E, width = mean.lwd, dash = 'dot'),
                       legendgroup = 'group3') %>% 
     plotly::add_ribbons(ymin = ~E.forecast.lower80, ymax = ~E.forecast.upper80,
-                        name = '(credible interval)', mode='lines',
+                        name = '(credible interval)', type = 'scatter', mode='lines',
                         line = list(color = col.E, width = ci.lwd),
                         fillcolor = col.E.ci,
                         legendgroup = 'group3') %>% 
     
     plotly::add_trace(y = ~nowcast.mean, 
-                      name = 'Total unnotified cases', mode = 'lines',
+                      name = 'Total unnotified cases', type = 'scatter', mode = 'lines',
                       line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
                       legendgroup = 'group4') %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
@@ -844,7 +849,7 @@ plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
 
 plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
   
-  col.cases <- 'rgba(0, 0, 0, 1)'
+  col.cases <- 'rgba(0, 0, 0, .35)'
   col.I <- 'rgba(230, 7, 7, .75)'
   col.I.ci <- 'rgba(230, 7, 7, 0.15)'
   col.E <- 'rgba(7, 164, 181, 0.75)'
@@ -856,10 +861,11 @@ plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
   mean.lwd <- 1
   data.lwd <- 3
   
-  p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~deaths, type = 'scatter',
-                               name = 'Death notifications', mode = 'lines',
-                               line = list(color = col.cases, width = data.lwd),
-                               legendgroup = 'group1'
+  p_nowcast <- plotly::plot_ly(data = database, x = ~Date) %>% 
+    plotly::add_trace(y = ~deaths, type = 'bar', 
+                      name = 'Death notifications', 
+                      marker = list(color = col.cases),
+                      legendgroup = 'group1'
   ) %>% 
     plotly::add_trace(y = ~I, 
                       name = 'Symptomatic cases', mode = 'lines',

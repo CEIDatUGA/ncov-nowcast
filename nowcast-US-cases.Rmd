@@ -100,7 +100,7 @@ US.all <- get_US_nowcast("US")
 ```
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(US.all) # %>% layout(showlegend = TRUE)
+plot_nowcast_from_case_reports(US.all, maxy = 10^8) # %>% plotly::layout(showlegend = TRUE)
 ```
 
 <!-- ```{r uncorrected} -->

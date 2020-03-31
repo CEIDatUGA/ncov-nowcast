@@ -49,10 +49,11 @@ US.all <- get_US_nowcast("US")
 
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-p <- plot_nowcast_from_death_reports(US.all) %>% plotly::layout(showlegend=TRUE, title="Nowcast for the US, estimated from fatalities")
+p <- plot_nowcast_from_death_reports(US.all, maxy = 10^8) %>% 
+  plotly::layout(showlegend=TRUE, title="Nowcast for the US, estimated from fatalities")
 htmlwidgets::saveWidget(p, "USnowcast_plot.html")
 
-plot_nowcast_from_death_reports(US.all) # %>% plotly::layout(showlegend=TRUE)
+plot_nowcast_from_death_reports(US.all, maxy = 10^8)  %>% plotly::layout(showlegend=TRUE)
 
 # fatalities.maxdaily <- sapply(fatalities.US[,-1], max, na.rm = TRUE)
 # which(fatalities.maxdaily >= 10)
@@ -95,7 +96,7 @@ NJ <- get_US_nowcast("NJ")
 # NM <- get_US_nowcast("NM")
 # NV <- get_US_nowcast("NV")
 NY <- get_US_nowcast("NY")
-# OH <- get_US_nowcast("OH")
+OH <- get_US_nowcast("OH")
 # OK <- get_US_nowcast("OK")
 # OR <- get_US_nowcast("OR")
 PA <- get_US_nowcast("PA")
@@ -287,10 +288,10 @@ plot_nowcast_from_death_reports(NJ)
 plot_nowcast_from_death_reports(NY)
 ```
 
-<!-- ### OH -->
-<!-- ```{r OH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
-<!-- plot_nowcast_from_death_reports(OH) -->
-<!-- ``` -->
+### OH
+```{r OH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_death_reports(OH)
+```
 
 <!-- ### OK -->
 <!-- ```{r OK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->

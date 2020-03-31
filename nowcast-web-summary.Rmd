@@ -664,13 +664,15 @@ p_nowcast_logy
 
 ### Method 1 (not completely correct)
 
-We can estimate $R_{eff}$ by using the ODEs for the SEIR model, and estimating the slope of $E$ ($\frac{dE}{dt}$).
+We can estimate $R(t)$ by using the ODEs for the SEIR model, and estimating the slope of $E$ ($\frac{dE}{dt}$).
 
 $$
 \frac{dE}{dt} = \beta S I - \sigma E \\
-R_{eff} = \frac{\beta S I}{\gamma} \\
+R(t) = \frac{\beta S I}{\gamma} \\
 \beta S I = \frac{dE}{dt}+ \sigma E  \\
-R_{eff} = \frac{\frac{dE}{dt}+ \sigma E}{\gamma} \\
+R(t) = \frac{\frac{dE}{dt}+ \sigma E}{\gamma} \\
+R_{t} = \frac{\left(\frac{dE}{dt}\right)_t + \sigma E_t}{\gamma_t}
+
 $$
 
 To estimate $\frac{dE}{dt}$ we take a moving window average of the first difference of $E$.

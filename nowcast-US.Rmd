@@ -79,6 +79,19 @@ Based on data from China, and correcting for demographics in Great Britain, Ferg
 
 The resulting estimates of latent and infectious individuals are intended to represent all unnotified cases.
 
+<!-- #### Effective reproductive number $R$ -->
+
+<!-- The effective reproductive number $R$ is the number of new secondary infections per infectious individual. If we consider only unnotified, symptomatic cases to be infectious, then at each time $t$, -->
+
+<!-- $$R_t = \frac{\frac{\Delta E_+}{\Delta t}}{I_t} \frac{1}{\gamma_t}$$ -->
+<!-- where $\frac{\Delta E_+}{\Delta t}$ is the number of individuals newly exposed over one day, ${I_t}$ is the total number of infectious individuals on day $t$, and $\frac{1}{\gamma_t}$ is the mean delay from symptom onset to case notification, which could be time varying. -->
+
+<!-- We calculate both $\frac{\Delta E_+}{\Delta t}$ and ${I_t}$ directly from the synthetic line list. $\frac{1}{\gamma_t}$ is estimated from US case data^[Analysis by the Center for the Ecology of Infectious Diseases of US. Parameters updated periodically. See supplemental information.]. -->
+
+<!-- As with the number of latent cases, we only have a good estimate of $\frac{\Delta E_+}{\Delta t}$ for times within `r params.US$incubation.period$mean` days (plus two standard deviations) of our last good estimate of the number of symptomatic individuals. We therefore forecast from that point forward to obtain an estimate of $R$ at times closer to the present. -->
+
+<!-- We can then use our estimate of $R$ or our forecast of $R$ to in turn forecast the number  -->
+
 ### Data sources
 
 **US case and fatailty reports by state**
