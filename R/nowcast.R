@@ -329,9 +329,9 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
                                   tkernel = "Gaussian",
                                   bw=NULL)
   ### TEMP PLOT
-  plot(log.curve.trimmed, type="l")
-  log.curve.model.tvar$fitted %>% lines(type="l", col="red")
-  title(main=paste('bw', log.curve.model.tvar$bw, 'p', log.curve.model.tvar$p))
+  # plot(log.curve.trimmed, type="l")
+  # log.curve.model.tvar$fitted %>% lines(type="l", col="red")
+  # title(main=paste('bw', log.curve.model.tvar$bw, 'p', log.curve.model.tvar$p))
   ### END TEMP PLOT
   
   log.curve.forecast <- forecast::forecast(log.curve.model.tvar$fitted,forecast.length)
@@ -354,7 +354,7 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
 
 # nowcast from case reports
 
-nowcast_from_case_reports <- function(casereports, params, tvar.bandwith=NULL) {
+nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, minimal=FALSE) {
   database <- casereports
   
   # Ascertainment
@@ -476,11 +476,13 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwith=NULL) {
   #                                             interval = params$incubation.period)
   # }
   
-    # # E onset
-  # E.onset <- get_onset_curve(dates = database$Date,
-  #                            linelist = E.linelist,
-  #                            interval = params$incubation.period)  
-  # database$E.onset <- E.onset$n
+  # E onset
+  if(minimal == FALSE){
+    E.onset <- get_onset_curve(dates = database$Date,
+                               linelist = E.linelist,
+                               interval = params$incubation.period)
+    database$E.onset <- E.onset$n
+  }
   
   # # E (detected)
   # E_d <- get_state_curve(dates = database$Date,
@@ -524,7 +526,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwith=NULL) {
   # }
   
   # forecasting I
-  I.forecast <- tvar_forecast_to_present(database$I,bw=tvar.bandwith)
+  I.forecast <- tvar_forecast_to_present(database$I, bw=tvar.bandwidth)
   database$I.fit <- I.forecast$fit
   database$I.forecast.mean <- I.forecast$mean
   database$I.forecast.upper80 <- I.forecast$upper80
@@ -554,7 +556,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwith=NULL) {
   
   
   # forecasting E
-  E.forecast <- tvar_forecast_to_present(database$E, bw=tvar.bandwith)
+  E.forecast <- tvar_forecast_to_present(database$E, bw=tvar.bandwidth)
   database$E.fit <- E.forecast$fit
   database$E.forecast.mean <- E.forecast$mean
   database$E.forecast.upper80 <- E.forecast$upper80
@@ -582,6 +584,14 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwith=NULL) {
   #   database$E.lower.forecast.upper80 <- database$E.forecast.upper80 
   # }
 
+  # forecasting E.onset
+  if(minimal == FALSE){
+    E.onset.forecast <- tvar_forecast_to_present(database$E.onset, bw=tvar.bandwidth)
+    database$E.onset.fit <- E.onset.forecast$fit
+    database$E.onset.forecast.mean <- E.onset.forecast$mean
+    database$E.onset.forecast.upper80 <- E.onset.forecast$upper80
+    database$E.onset.forecast.lower80 <- E.onset.forecast$lower80
+  }
   
   # nowcast
   
@@ -614,12 +624,29 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwith=NULL) {
            nowcast.lower = rowSums(dplyr::select(., I, I.forecast.lower80, E, E.forecast.lower80), na.rm = TRUE)
     )
   
+  # cumulative 
+  if(minimal == FALSE){
+    database <- database %>%
+      mutate(cum.cases = cumsum(replace_na(cases,0)),
+             cum.infections.mean = cumsum(
+               rowSums(dplyr::select(., E.onset, E.onset.forecast.mean), na.rm = TRUE)
+               ),
+             cum.infections.upper80 = cumsum(
+               rowSums(dplyr::select(., E.onset, E.onset.forecast.upper80), na.rm = TRUE)
+               ),
+             cum.infections.lower80 = cumsum(
+               rowSums(dplyr::select(., E.onset, E.onset.forecast.lower80), na.rm = TRUE)
+               )
+             )
+  }
+  
+  
   return(database)
 }
 
 # nowcast from death reports using symtpom-onset-to-death
 
-nowcast_from_deaths_with_onset_to_death <- function(deathreports, params, tvar.bandwith=NULL) {
+nowcast_from_deaths_with_onset_to_death <- function(deathreports, params, tvar.bandwidth=NULL) {
   database <- deathreports
   # # Ascertainment - not used for death reports
   # if(is.null(params$q)){
@@ -685,14 +712,14 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports, params, tvar.b
   database$E <- E$value
   
   # forecasting I
-  I.forecast <- tvar_forecast_to_present(database$I, bw=tvar.bandwith)
+  I.forecast <- tvar_forecast_to_present(database$I, bw=tvar.bandwidth)
   database$I.fit <- I.forecast$fit
   database$I.forecast.mean <- I.forecast$mean
   database$I.forecast.lower80 <- I.forecast$lower80
   database$I.forecast.upper80 <- I.forecast$upper80
   
   # forecasting E
-  E.forecast <- tvar_forecast_to_present(database$E, bw=tvar.bandwith)
+  E.forecast <- tvar_forecast_to_present(database$E, bw=tvar.bandwidth)
   database$E.fit <- E.forecast$fit
   database$E.forecast.mean <- E.forecast$mean
   database$E.forecast.lower80 <- E.forecast$lower80
@@ -713,7 +740,7 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports, params, tvar.b
 get_ascertainment <- function(cases, deaths, params, window = 7) {
   params$q <- 1
   
-  nowcast_from_cases <- nowcast_from_case_reports(cases, params)
+  nowcast_from_cases <- nowcast_from_case_reports(cases, params, minimal=TRUE)
   nowcast_from_deaths <- nowcast_from_deaths_with_onset_to_death(deaths, params)
   
   maxspan <- max(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
@@ -776,9 +803,10 @@ get_ascertainment <- function(cases, deaths, params, window = 7) {
 
 # plot nowcast from case reports
 
-plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
+plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, maxy = 10^7, logy = TRUE, legend = FALSE) {
   
   col.cases <- 'rgba(0, 0, 0, .35)'
+  col.deaths <- 'rgba(0, 0, 0, 1.0)'
   col.I <- 'rgba(230, 7, 7, .75)'
   col.I.ci <- 'rgba(230, 7, 7, .15)'
   col.E <- 'rgba(7, 164, 181, 0.75)'
@@ -790,14 +818,9 @@ plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
   mean.lwd <- 1
   data.lwd <- 2
   
-  # p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
-  #                              name = 'Case notifications', mode = 'lines',
-  #                              line = list(color = col.cases, width = data.lwd),
-  #                              legendgroup = 'group1'
-  #                              ) %>% 
   p_nowcast <- plotly::plot_ly(data = database, x = ~Date) %>% 
     plotly::add_trace(y = ~cases, type = 'bar',
-                               name = 'Case notifications',
+                               name = 'New case notifications',
                                marker = list(color = col.cases),
                                legendgroup = 'group1') %>% 
     plotly::add_trace(y = ~I, 
@@ -809,7 +832,7 @@ plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
                       line = list(color = col.I, width = mean.lwd, dash = 'dot'),
                       legendgroup = 'group2') %>% 
     plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
-                        name = '(credible interval)', mode='lines',
+                        name = '(prediction interval)', mode='lines',
                         line = list(color = col.I, width = ci.lwd),
                         fillcolor = col.I.ci,
                         legendgroup = 'group2') %>% 
@@ -823,7 +846,7 @@ plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
                       line = list(color = col.E, width = mean.lwd, dash = 'dot'),
                       legendgroup = 'group3') %>% 
     plotly::add_ribbons(ymin = ~E.forecast.lower80, ymax = ~E.forecast.upper80,
-                        name = '(credible interval)', type = 'scatter', mode='lines',
+                        name = '(prediction interval)', type = 'scatter', mode='lines',
                         line = list(color = col.E, width = ci.lwd),
                         fillcolor = col.E.ci,
                         legendgroup = 'group3') %>% 
@@ -833,16 +856,51 @@ plot_nowcast_from_case_reports <- function(database, maxy = 10^7) {
                       line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
                       legendgroup = 'group4') %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
-                        name = '(credible interval)', mode='lines',
+                        name = '(prediction interval)', mode='lines',
                         line = list(color = col.nowcast, width = ci.lwd),
                         fillcolor = col.nowcast.ci,
                         legendgroup = 'group4')
   
-  p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,log10(maxy))),
-                                                 # legend = list()
-                                                 showlegend = FALSE
-                                                 )
-  p_nowcast_logy
+  if(plotdeaths == TRUE) {
+    p_nowcast <- p_nowcast %>% 
+      plotly::add_trace(y = ~deaths, 
+                        name = 'New death notifications', type = 'scatter', mode = 'lines',
+                        line = list(color = col.deaths, width = data.lwd, shape = 'hvh'),
+                        legendgroup = 'group1')
+  }
+  
+  display <- function(x) {
+    format(round(x), big.mark=",")
+  }
+  
+  # cross reference state codes
+  states <- read_csv("data/states.csv")
+  state <- deparse(substitute(database))
+  statename <- states %>% filter(code == state) %>% pull(name)
+
+  p_nowcast <- p_nowcast %>% 
+    plotly::layout(yaxis = list(type = ifelse(logy==TRUE,"log","linear"),
+                                range = ifelse(logy==TRUE,c(-.25,log10(maxy)),c(0,maxy)),
+                                title = "Number"),
+                   # legend = list()
+                   showlegend = legend,
+                   title = paste("Nowcast for",statename),
+                   annotations = list(yref = 'paper', xref = 'paper', 
+                                      y = 1, x = .1,
+                                      text = paste("Total case notifications to date:", 
+                                                   display(tail(database$cum.cases,1)),"\n\n",
+                                                   "Total deaths to date:", 
+                                                   display(tail(database$cum.deaths,1)),"\n\n",
+                                                   "Estimated total number of infections to date:", 
+                                                   display(tail(database$cum.infections.mean,1)),"\n",
+                                                   "(prediction interval:",
+                                                   display(tail(database$cum.infections.lower80,1)),"to",
+                                                   display(tail(database$cum.infections.upper80,1)),")"
+                                                   ),
+                                      showarrow = FALSE,
+                                      xanchor = "left")
+                   )
+  p_nowcast
 }
 
 # plot nowcast from death reports
@@ -863,7 +921,7 @@ plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
   
   p_nowcast <- plotly::plot_ly(data = database, x = ~Date) %>% 
     plotly::add_trace(y = ~deaths, type = 'bar', 
-                      name = 'Death notifications', 
+                      name = 'New death notifications', 
                       marker = list(color = col.cases),
                       legendgroup = 'group1'
   ) %>% 
@@ -876,7 +934,7 @@ plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
                       line = list(color = col.I, width = mean.lwd, dash = 'dot'),
                       legendgroup = 'group2') %>% 
     plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
-                        name = '(credible interval)', mode='lines',
+                        name = '(prediction interval)', mode='lines',
                         line = list(color = col.I, width = ci.lwd),
                         fillcolor = col.I.ci,
                         legendgroup = 'group2') %>% 
@@ -890,7 +948,7 @@ plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
                       line = list(color = col.E, width = mean.lwd, dash = 'dot'),
                       legendgroup = 'group3') %>% 
     plotly::add_ribbons(ymin = ~E.forecast.lower80, ymax = ~E.forecast.upper80,
-                        name = '(credible interval)', mode='lines',
+                        name = '(prediction interval)', mode='lines',
                         line = list(color = col.E, width = ci.lwd),
                         fillcolor = col.E.ci,
                         legendgroup = 'group3') %>% 
@@ -900,7 +958,7 @@ plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
                       line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
                       legendgroup = 'group4') %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
-                        name = '(credible interval)', mode='lines',
+                        name = '(prediction interval)', mode='lines',
                         line = list(color = col.nowcast, width = ci.lwd),
                         fillcolor = col.nowcast.ci,
                         legendgroup = 'group4')
