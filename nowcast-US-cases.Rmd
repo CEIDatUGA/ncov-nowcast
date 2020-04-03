@@ -1,5 +1,5 @@
 ---
-title: "Nowcasting from case reports"
+title: "Nowcasts for the US, states, and territories"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
@@ -89,6 +89,8 @@ saveRDS(params.US,"data/params.US.rds")
 <!-- calculate nowcasts for entire US  -->
 ```{r nowcast_US, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 
+params.US <- readRDS("data/params.US.rds")
+
 get_nowcast <- function(admin, cases, fatalities, params) {
   nowcast <- cases %>% select(Date, cases = admin) %>% 
     tbl_time(index = Date) %>% nowcast_from_case_reports(params)
@@ -121,7 +123,7 @@ htmlwidgets::saveWidget(p, "USnowcast_plot.html")
 ```
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(US, maxy = 10^8, legend = FALSE)
+plot_nowcast_from_case_reports(US, maxy = 10^8, legend = TRUE)
 ```
 
 <!-- ```{r uncorrected} -->
@@ -198,257 +200,257 @@ VI <- get_nowcast("VI", cases.US, fatalities.US, params.US)
 
 ### AK
 ```{r AK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(AK)
+plot_nowcast_from_case_reports(AK,  maxy = 10^7)
 ```
 
 ### AL
 ```{r AL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(AL)
+plot_nowcast_from_case_reports(AL,  maxy = 10^7)
 ```
 
 ### AR
 ```{r AR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(AR)
+plot_nowcast_from_case_reports(AR,  maxy = 10^7)
 ```
 
 ### AZ
 ```{r AZ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(AZ)
+plot_nowcast_from_case_reports(AZ,  maxy = 10^7)
 ```
 
 ### CA
 ```{r CA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(CA)
+plot_nowcast_from_case_reports(CA,  maxy = 10^7)
 ```
 
 ### CO
 ```{r CO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(CO)
+plot_nowcast_from_case_reports(CO,  maxy = 10^7)
 ```
 
 ### CT
 ```{r CT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(CT)
+plot_nowcast_from_case_reports(CT,  maxy = 10^7)
 ```
 
 ### DC
 ```{r DC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(DC)
+plot_nowcast_from_case_reports(DC,  maxy = 10^7)
 ```
 
 ### DE
 ```{r DE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(DE)
+plot_nowcast_from_case_reports(DE,  maxy = 10^7)
 ```
 
 ### FL
 ```{r FL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(FL)
+plot_nowcast_from_case_reports(FL,  maxy = 10^7)
 ```
 
 ### GA
 ```{r GA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(GA)
+plot_nowcast_from_case_reports(GA,  maxy = 10^7)
 ```
 
 ### HI
 ```{r HI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(HI)
+plot_nowcast_from_case_reports(HI,  maxy = 10^7)
 ```
 
 ### IA
 ```{r IA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(IA)
+plot_nowcast_from_case_reports(IA,  maxy = 10^7)
 ```
 
 ### ID
 ```{r ID, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(ID)
+plot_nowcast_from_case_reports(ID,  maxy = 10^7)
 ```
 
 ### IL
 ```{r IL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(IL)
+plot_nowcast_from_case_reports(IL,  maxy = 10^7)
 ```
 
 ### IN
 ```{r IN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(IN)
+plot_nowcast_from_case_reports(IN,  maxy = 10^7)
 ```
 
 ### KS
 ```{r KS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(KS)
+plot_nowcast_from_case_reports(KS,  maxy = 10^7)
 ```
 
 ### KY
 ```{r KY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(KY)
+plot_nowcast_from_case_reports(KY,  maxy = 10^7)
 ```
 
 ### LA
 ```{r LA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(LA)
+plot_nowcast_from_case_reports(LA,  maxy = 10^7)
 ```
 
 ### MA
 ```{r MA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(MA)
+plot_nowcast_from_case_reports(MA,  maxy = 10^7)
 ```
 
 ### MD
 ```{r MD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(MD)
+plot_nowcast_from_case_reports(MD,  maxy = 10^7)
 ```
 
 ### ME
 ```{r ME, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(ME)
+plot_nowcast_from_case_reports(ME,  maxy = 10^7)
 ```
 
 ### MI
 ```{r MI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(MI)
+plot_nowcast_from_case_reports(MI,  maxy = 10^7)
 ```
 
 ### MN
 ```{r MN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(MN)
+plot_nowcast_from_case_reports(MN,  maxy = 10^7)
 ```
 
 ### MO
 ```{r MO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(MO)
+plot_nowcast_from_case_reports(MO,  maxy = 10^7)
 ```
 
 ### MS
 ```{r MS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(MS)
+plot_nowcast_from_case_reports(MS,  maxy = 10^7)
 ```
 
 ### MT
 ```{r MT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(MT)
+plot_nowcast_from_case_reports(MT,  maxy = 10^7)
 ```
 
 ### NC
 ```{r NC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(NC)
+plot_nowcast_from_case_reports(NC,  maxy = 10^7)
 ```
 
 ### ND
 ```{r ND, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(ND)
+plot_nowcast_from_case_reports(ND,  maxy = 10^7)
 ```
 
 ### NE
 ```{r NE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(NE)
+plot_nowcast_from_case_reports(NE,  maxy = 10^7)
 ```
 
 ### NH
 ```{r NH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(NH)
+plot_nowcast_from_case_reports(NH,  maxy = 10^7)
 ```
 
 ### NJ
 ```{r NJ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(NJ)
+plot_nowcast_from_case_reports(NJ,  maxy = 10^7)
 ```
 
 ### NM
 ```{r NM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(NM)
+plot_nowcast_from_case_reports(NM,  maxy = 10^7)
 ```
 
 ### NV
 ```{r NV, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(NV)
+plot_nowcast_from_case_reports(NV,  maxy = 10^7)
 ```
 
 ### NY
 ```{r NY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(NY)
+plot_nowcast_from_case_reports(NY,  maxy = 10^7)
 ```
 
 ### OH
 ```{r OH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(OH)
+plot_nowcast_from_case_reports(OH,  maxy = 10^7)
 ```
 
 ### OK
 ```{r OK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(OK)
+plot_nowcast_from_case_reports(OK,  maxy = 10^7)
 ```
 
 ### OR
 ```{r OR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(OR)
+plot_nowcast_from_case_reports(OR,  maxy = 10^7)
 ```
 
 ### PA
 ```{r PA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(PA)
+plot_nowcast_from_case_reports(PA,  maxy = 10^7)
 ```
 
 ### RI
 ```{r RI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(RI)
+plot_nowcast_from_case_reports(RI,  maxy = 10^7)
 ```
 
 ### SC
 ```{r SC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(SC)
+plot_nowcast_from_case_reports(SC,  maxy = 10^7)
 ```
 
 ### SD
 ```{r SD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(SD)
+plot_nowcast_from_case_reports(SD,  maxy = 10^7)
 ```
 
 ### TN
 ```{r TN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(TN)
+plot_nowcast_from_case_reports(TN,  maxy = 10^7)
 ```
 
 ### TX
 ```{r TX, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(TX)
+plot_nowcast_from_case_reports(TX,  maxy = 10^7)
 ```
 
 ### UT
 ```{r UT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(UT)
+plot_nowcast_from_case_reports(UT,  maxy = 10^7)
 ```
 
 ### VA
 ```{r VA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(VA)
+plot_nowcast_from_case_reports(VA,  maxy = 10^7)
 ```
 
 ### VT
 ```{r VT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(VT)
+plot_nowcast_from_case_reports(VT,  maxy = 10^7)
 ```
 
 ### WA
 ```{r WA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(WA)
+plot_nowcast_from_case_reports(WA,  maxy = 10^7)
 ```
 
 ### WI
 ```{r WI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(WI)
+plot_nowcast_from_case_reports(WI,  maxy = 10^7)
 ```
 
 ### WY
 ```{r WY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(WY)
+plot_nowcast_from_case_reports(WY,  maxy = 10^7)
 ```
 
 ### Guam
 ```{r GU, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(GU)
+plot_nowcast_from_case_reports(GU,  maxy = 10^7)
 ```
 
 <!-- ### Northern Mariana Islands -->
@@ -458,12 +460,12 @@ plot_nowcast_from_case_reports(GU)
 
 ### Puerto Rico
 ```{r PR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(PR)
+plot_nowcast_from_case_reports(PR,  maxy = 10^7)
 ```
 
 ### US Virgin Islands
 ```{r VI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(VI)
+plot_nowcast_from_case_reports(VI,  maxy = 10^7)
 ```
 
 ## ![](nowcast-legend-combined.png)

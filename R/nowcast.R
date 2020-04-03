@@ -801,6 +801,9 @@ get_ascertainment <- function(cases, deaths, params, window = 7) {
   return(ascertainment)
 }
 
+## function to wrap text in an html span tag styled with a serif font
+
+
 # plot nowcast from case reports
 
 plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, maxy = 10^7, logy = TRUE, legend = FALSE) {
@@ -813,65 +816,123 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, maxy = 1
   col.E.ci <- 'rgba(7, 164, 181, 0.15)'
   col.nowcast <- 'rgba(7, 7, 230, 0.75)'
   col.nowcast.ci <- 'rgba(7, 7, 230, 0.15)'
+  col.invisible <- 'rgba(7, 7, 230, .01)'
   
   ci.lwd <- .5
   mean.lwd <- 1
   data.lwd <- 2
   
+  serif <- function(x) {
+    htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
+  }
+  
+  display <- function(x) {
+    format(round(x), big.mark=",", trim = TRUE)
+  }
+  
+  plotfont <- list(family = "serif")
+  hoverlabel <- list(namelength = -1,
+                     font = list(family = "serif"))
+  
   p_nowcast <- plotly::plot_ly(data = database, x = ~Date) %>% 
     plotly::add_trace(y = ~cases, type = 'bar',
-                               name = 'New case notifications',
-                               marker = list(color = col.cases),
-                               legendgroup = 'group1') %>% 
+                      name = 'New case notifications',
+                      marker = list(color = col.cases),
+                      legendgroup = 'group1',
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~paste(display(cases),serif("new case reports")) ) %>% 
     plotly::add_trace(y = ~I, 
                       name = 'Symptomatic cases', type = 'scatter', mode = 'lines',
                       line = list(color = col.I, width = data.lwd),
-                      legendgroup = 'group2') %>%
+                      legendgroup = 'group2',
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~paste(display(I),serif("symptomatic")) ) %>%
     plotly::add_trace(y = ~I.forecast.mean, 
                       name = '(forecast average)', type = 'scatter', mode = 'lines',
                       line = list(color = col.I, width = mean.lwd, dash = 'dot'),
-                      legendgroup = 'group2') %>% 
+                      legendgroup = 'group2',
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~paste(display(I.forecast.mean),"symptomatic\n",
+                                    "(range:", display(I.forecast.lower80), "to",
+                                    display(I.forecast.upper80),")") ) %>% 
     plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
                         name = '(prediction interval)', mode='lines',
                         line = list(color = col.I, width = ci.lwd),
                         fillcolor = col.I.ci,
-                        legendgroup = 'group2') %>% 
+                        legendgroup = 'group2',
+                        hoverinfo='none') %>% 
     
     plotly::add_trace(y = ~E, 
                       name = 'Latent cases', type = 'scatter', mode = 'lines',
                       line = list(color = col.E, width = data.lwd),
-                      legendgroup = 'group3') %>%
+                      legendgroup = 'group3',
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~paste(display(E),serif("latent")) ) %>%
     plotly::add_trace(y = ~E.forecast.mean, 
                       name = '(forecast average)', type = 'scatter', mode = 'lines',
                       line = list(color = col.E, width = mean.lwd, dash = 'dot'),
-                      legendgroup = 'group3') %>% 
+                      legendgroup = 'group3',
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~paste(display(E.forecast.mean),"latent\n",
+                                    "(range:", display(E.forecast.lower80), "to",
+                                    display(E.forecast.upper80),")") ) %>% 
     plotly::add_ribbons(ymin = ~E.forecast.lower80, ymax = ~E.forecast.upper80,
                         name = '(prediction interval)', type = 'scatter', mode='lines',
                         line = list(color = col.E, width = ci.lwd),
                         fillcolor = col.E.ci,
-                        legendgroup = 'group3') %>% 
+                        legendgroup = 'group3',
+                        hoverinfo='none') %>% 
     
     plotly::add_trace(y = ~nowcast.mean, 
                       name = 'Total unnotified cases', type = 'scatter', mode = 'lines',
                       line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
-                      legendgroup = 'group4') %>% 
+                      legendgroup = 'group4',
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~if_else(nowcast.mean==nowcast.upper,
+                                      paste(display(nowcast.mean),"total latent + symptomatic"),
+                                      paste(display(nowcast.mean),"total latent + symptomatic\n",
+                                            "(range:", display(nowcast.lower), "to",
+                                            display(nowcast.upper),")")
+                                      )
+                      ) %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
                         name = '(prediction interval)', mode='lines',
                         line = list(color = col.nowcast, width = ci.lwd),
                         fillcolor = col.nowcast.ci,
-                        legendgroup = 'group4')
+                        legendgroup = 'group4',
+                        hoverinfo='none') %>% 
+    plotly::add_trace(y = maxy, 
+                      name = 'CUMULATIVE NUMBERS HELPER TRACE', type = 'scatter', mode = 'lines',
+                      line = list(color = col.invisible),
+                      visible = TRUE, showlegend = FALSE,
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~paste("CUMULATIVE COUNTS:\n",
+                                    "Case notifications to date:", display(cum.cases),"\n",
+                                    "Deaths to date:", display(cum.deaths),"\n",
+                                    "Estimated infections to date:", display(cum.infections.mean),"\n",
+                                    "(range:",display(cum.infections.lower80),"to",display(cum.infections.upper80),")"
+                                    ) 
+                      )
   
   if(plotdeaths == TRUE) {
     p_nowcast <- p_nowcast %>% 
       plotly::add_trace(y = ~deaths, 
                         name = 'New death notifications', type = 'scatter', mode = 'lines',
                         line = list(color = col.deaths, width = data.lwd, shape = 'hvh'),
-                        legendgroup = 'group1')
+                        legendgroup = 'group1',
+                        hoverinfo = "x+text",
+                        hoverlabel = hoverlabel,
+                        text = ~paste(display(deaths),serif("new deaths")) )
   }
   
-  display <- function(x) {
-    format(round(x), big.mark=",")
-  }
+  
   
   # cross reference state codes
   states <- read_csv("data/states.csv")
@@ -881,19 +942,31 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, maxy = 1
   p_nowcast <- p_nowcast %>% 
     plotly::layout(yaxis = list(type = ifelse(logy==TRUE,"log","linear"),
                                 range = ifelse(logy==TRUE,c(-.25,log10(maxy)),c(0,maxy)),
-                                title = "Number"),
+                                title = "Number",
+                                spikethickness = 0),
+                   xaxis = list(
+                     spikethickness = 1,
+                     spikedash = "dot",
+                     spikecolor = "black",
+                     spikemode = "across+marker",
+                     spikesnap = "cursor"
+                   ),
+                   hovermode = 'x',
+                   hoverdistance = 1,
                    # legend = list()
                    showlegend = legend,
                    title = paste("Nowcast for",statename),
                    annotations = list(yref = 'paper', xref = 'paper', 
-                                      y = 1, x = .1,
-                                      text = paste("Total case notifications to date:", 
-                                                   display(tail(database$cum.cases,1)),"\n\n",
-                                                   "Total deaths to date:", 
-                                                   display(tail(database$cum.deaths,1)),"\n\n",
-                                                   "Estimated total number of infections to date:", 
+                                      y = 1, x = .1, align = "left",
+                                      text = paste("CUMULATIVE COUNTS THROUGH", 
+                                                   format(max(database$Date),"%B %d, %Y"),":\n",
+                                                   "Cumulative case notifications:", 
+                                                   display(tail(database$cum.cases,1)),"\n",
+                                                   "Cumulative deaths:",
+                                                   display(tail(database$cum.deaths,1)),"\n",
+                                                   "Estimated cumulative infections:", 
                                                    display(tail(database$cum.infections.mean,1)),"\n",
-                                                   "(prediction interval:",
+                                                   "(range of estimate:",
                                                    display(tail(database$cum.infections.lower80,1)),"to",
                                                    display(tail(database$cum.infections.upper80,1)),")"
                                                    ),
