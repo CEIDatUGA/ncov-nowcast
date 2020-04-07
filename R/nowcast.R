@@ -361,6 +361,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   if(is.null(params$q)){
     params$q <- 1
   }
+  
   if(is.data.frame(params$q)){
     if(nrow(database) != nrow(params$q)) {
       stop("nowcast_from_case_reports: q must be a constant, a list, or a dataframe with the same number of rows as casereports.")
@@ -806,7 +807,7 @@ get_ascertainment <- function(cases, deaths, params, window = 7) {
 
 # plot nowcast from case reports
 
-plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, maxy = 10^7, logy = TRUE, legend = FALSE) {
+plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumulative = FALSE, maxy = 10^7, logy = TRUE, legend = FALSE) {
   
   col.cases <- 'rgba(0, 0, 0, .35)'
   col.deaths <- 'rgba(0, 0, 0, 1.0)'
@@ -906,20 +907,23 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, maxy = 1
                         line = list(color = col.nowcast, width = ci.lwd),
                         fillcolor = col.nowcast.ci,
                         legendgroup = 'group4',
-                        hoverinfo='none') %>% 
-    plotly::add_trace(y = maxy, 
+                        hoverinfo='none')
+  
+    if(plotcumulative == TRUE){
+      p_nowcast <- p_nowcast %>% 
+       plotly::add_trace(y = maxy,
                       name = 'CUMULATIVE NUMBERS HELPER TRACE', type = 'scatter', mode = 'lines',
                       line = list(color = col.invisible),
                       visible = TRUE, showlegend = FALSE,
                       hoverinfo = "x+text",
                       hoverlabel = hoverlabel,
-                      text = ~paste("CUMULATIVE COUNTS:\n",
-                                    "Case notifications to date:", display(cum.cases),"\n",
+                      text = ~paste("Case notifications to date:", display(cum.cases),"\n",
                                     "Deaths to date:", display(cum.deaths),"\n",
                                     "Estimated infections to date:", display(cum.infections.mean),"\n",
                                     "(range:",display(cum.infections.lower80),"to",display(cum.infections.upper80),")"
-                                    ) 
+                                    )
                       )
+    }
   
   if(plotdeaths == TRUE) {
     p_nowcast <- p_nowcast %>% 
@@ -955,24 +959,40 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, maxy = 1
                    hoverdistance = 1,
                    # legend = list()
                    showlegend = legend,
-                   title = paste("Nowcast for",statename),
-                   annotations = list(yref = 'paper', xref = 'paper', 
-                                      y = 1, x = .1, align = "left",
-                                      text = paste("CUMULATIVE COUNTS THROUGH", 
-                                                   format(max(database$Date),"%B %d, %Y"),":\n",
-                                                   "Cumulative case notifications:", 
-                                                   display(tail(database$cum.cases,1)),"\n",
-                                                   "Cumulative deaths:",
-                                                   display(tail(database$cum.deaths,1)),"\n",
-                                                   "Estimated cumulative infections:", 
-                                                   display(tail(database$cum.infections.mean,1)),"\n",
-                                                   "(range of estimate:",
-                                                   display(tail(database$cum.infections.lower80,1)),"to",
-                                                   display(tail(database$cum.infections.upper80,1)),")"
-                                                   ),
-                                      showarrow = FALSE,
-                                      xanchor = "left")
+                   title = paste("Nowcast for",statename)
                    )
+  if(plotcumulative == TRUE){
+    p_nowcast <- p_nowcast %>% 
+      plotly::layout(
+        annotations = list(yref = 'paper', xref = 'paper',
+                           y = 1, x = .1, align = "left",
+                           text = paste("Cumulative case notifications through:",format(max(database$Date),"%B %d, %Y"),
+                                        display(tail(database$cum.cases,1)),"\n",
+                                        "Cumulative deaths through:",format(max(database$Date),"%B %d, %Y"),
+                                        display(tail(database$cum.deaths,1)),"\n",
+                                        "Estimated cumulative infections through:",format(max(database$Date),"%B %d, %Y"),
+                                        display(tail(database$cum.infections.mean,1)),"\n",
+                                        "(range of estimate:",
+                                        display(tail(database$cum.infections.lower80,1)),"to",
+                                        display(tail(database$cum.infections.upper80,1)),")"
+                           ),
+                           showarrow = FALSE,
+                           xanchor = "left")
+      )
+  }else{
+    p_nowcast <- p_nowcast %>% 
+      plotly::layout(
+        annotations = list(yref = 'paper', xref = 'paper',
+                           y = 1, x = .1, align = "left",
+                           text = paste("Cumulative case notifications through:",format(max(database$Date),"%B %d, %Y"),
+                                        display(tail(database$cum.cases,1)),"\n",
+                                        "Cumulative deaths through:",format(max(database$Date),"%B %d, %Y"),
+                                        display(tail(database$cum.deaths,1))
+                           ),
+                           showarrow = FALSE,
+                           xanchor = "left")
+      )
+  }
   p_nowcast
 }
 

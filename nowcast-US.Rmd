@@ -105,7 +105,9 @@ To find the time varying ascertainment rate for cases, we calculate the nowcast 
 
 **US case and fatailty reports by state**
 
-Data are compiled daily from <https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases>, which is updated by anonymous contributors.
+We compile daily case and fatality reports for US states and territories from <https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases>, which is updated by anonymous contributors.
+
+Data from the wikipedia tables are downloaded and cleaned daily and made publicaly available in CSV format at <a href="https://github.com/CEIDatUGA/COVID-19-DATA" target="_blank">https://github.com/CEIDatUGA/COVID-19-DATA<>
 
 
 <!-- **Fatalities by Country** -->

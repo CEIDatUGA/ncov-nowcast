@@ -3,6 +3,45 @@ library(tibbletime)
 library(padr)
 library(rvest)
 
+# Get Data from GitHub repo "CEIDatUGA/COVID-19-DATA" (from Wikipedia)
+
+# CASES
+
+path <- "https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/US/US_wikipedia_cases_fatalities/"
+
+cases.US <- read_csv(paste0(path, "UScases_by_state_wikipedia.csv")) %>% 
+  filter(Date != "Total") %>% 
+  select(-c("Conf_New", "Conf_Cml", "deaths_New", "deaths_Cml", "Rec_New", "Rec_Cml", "time_last_update")) %>% 
+  mutate(Date = as.Date(paste(Date, "2020"), "%b %d %Y")) %>% 
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
+  filter(Date < Sys.Date())
+
+# save RDS
+saveRDS(cases.US,"data/cases.US.rds")
+
+# FATALITIES
+
+fatalities.US <- read_csv(paste0(path, "USfatalities_by_state_wikipedia.csv")) %>% 
+  filter(Date != "Total") %>% 
+  select(-c("deaths_New", "deaths_Cml", "time_last_update")) %>% 
+  mutate(Date = as.Date(paste(Date, "2020"), "%b %d %Y")) %>% 
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
+  filter(Date < Sys.Date())
+
+# save RDS
+saveRDS(fatalities.US,"data/fatalities.US.rds")
+
+
+
+
+
+
 # Get case reports for US states
 # read data directly from google sheet.
 
@@ -22,31 +61,31 @@ library(rvest)
 
 # Scrape Wikipedia
 
-url <- "https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases"
-
-cases.US.wikipedia <- url %>%
-  html() %>%
-  html_nodes(xpath='//*[@id="mw-content-text"]/div/div[2]/table') %>%
-  html_table(fill = TRUE)
-cases.US.wikipedia <- cases.US.wikipedia[[1]]
-names(cases.US.wikipedia) <- cases.US.wikipedia[1,]
-cases.US.wikipedia <- cases.US.wikipedia[2:(nrow(cases.US.wikipedia)-5),
-                                         1:(ncol(cases.US.wikipedia)-6)]
-
-cases.US.wikipedia$Date <- paste(cases.US.wikipedia$Date, "2020") %>% 
-  as.Date("%b %d %Y")
-
-cases.US <- cases.US.wikipedia %>%
-  mutate_if(sapply(cases.US.wikipedia, is.character), as.numeric) %>% 
-  rename_all(list(~make.names(.))) %>% 
-  padr::pad(start_val = as.Date("2019-12-01")) %>%
-  replace(., is.na(.), 0) %>%
-  tibbletime::as_tbl_time(index=Date) %>% 
-  mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
-  filter(Date < Sys.Date())
-
-remove(cases.US.wikipedia)
-saveRDS(cases.US,"data/cases.US.rds")
+# url <- "https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases"
+# 
+# cases.US.wikipedia <- url %>%
+#   html() %>%
+#   html_nodes(xpath='//*[@id="mw-content-text"]/div/div[2]/table') %>%
+#   html_table(fill = TRUE)
+# cases.US.wikipedia <- cases.US.wikipedia[[1]]
+# names(cases.US.wikipedia) <- cases.US.wikipedia[1,]
+# cases.US.wikipedia <- cases.US.wikipedia[2:(nrow(cases.US.wikipedia)-5),
+#                                          1:(ncol(cases.US.wikipedia)-6)]
+# 
+# cases.US.wikipedia$Date <- paste(cases.US.wikipedia$Date, "2020") %>% 
+#   as.Date("%b %d %Y")
+# 
+# cases.US <- cases.US.wikipedia %>%
+#   mutate_if(sapply(cases.US.wikipedia, is.character), as.numeric) %>% 
+#   rename_all(list(~make.names(.))) %>% 
+#   padr::pad(start_val = as.Date("2019-12-01")) %>%
+#   replace(., is.na(.), 0) %>%
+#   tibbletime::as_tbl_time(index=Date) %>% 
+#   mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
+#   filter(Date < Sys.Date())
+# 
+# remove(cases.US.wikipedia)
+# saveRDS(cases.US,"data/cases.US.rds")
 
 # Get fatalities reports for US states
 
@@ -73,33 +112,33 @@ saveRDS(cases.US,"data/cases.US.rds")
 # fatalities.US <- fatalities %>% dplyr::select(Date, deaths = US)
 
 
-url <- "https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases"
+# url <- "https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases"
+# 
+# fatalities.US.wikipedia <- url %>%
+#   html() %>%
+#   html_nodes(xpath='//*[@id="mw-content-text"]/div/div[3]/table') %>%
+#   html_table(fill = TRUE)
+# fatalities.US.wikipedia <- fatalities.US.wikipedia[[1]]
+# names(fatalities.US.wikipedia) <- fatalities.US.wikipedia[1,]
+# fatalities.US.wikipedia <- fatalities.US.wikipedia[2:(nrow(fatalities.US.wikipedia)-5),
+#                                                    1:(ncol(fatalities.US.wikipedia)-2)]
+# 
+# fatalities.US.wikipedia$Date <- paste(fatalities.US.wikipedia$Date, "2020") %>% 
+#   as.Date("%b %d %Y")
+# 
+# fatalities.US <- fatalities.US.wikipedia %>%
+#   mutate_if(sapply(fatalities.US.wikipedia, is.character), as.numeric) %>% 
+#   rename_all(list(~make.names(.))) %>% 
+#   padr::pad(start_val = as.Date("2019-12-01")) %>%
+#   replace(., is.na(.), 0) %>%
+#   tibbletime::as_tbl_time(index=Date) %>% 
+#   mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
+#   filter(Date < Sys.Date())
+# 
+# remove(fatalities.US.wikipedia)
+# saveRDS(fatalities.US,"data/fatalities.US.rds")
 
-fatalities.US.wikipedia <- url %>%
-  html() %>%
-  html_nodes(xpath='//*[@id="mw-content-text"]/div/div[3]/table') %>%
-  html_table(fill = TRUE)
-fatalities.US.wikipedia <- fatalities.US.wikipedia[[1]]
-names(fatalities.US.wikipedia) <- fatalities.US.wikipedia[1,]
-fatalities.US.wikipedia <- fatalities.US.wikipedia[2:(nrow(fatalities.US.wikipedia)-5),
-                                                   1:(ncol(fatalities.US.wikipedia)-2)]
-
-fatalities.US.wikipedia$Date <- paste(fatalities.US.wikipedia$Date, "2020") %>% 
-  as.Date("%b %d %Y")
-
-fatalities.US <- fatalities.US.wikipedia %>%
-  mutate_if(sapply(fatalities.US.wikipedia, is.character), as.numeric) %>% 
-  rename_all(list(~make.names(.))) %>% 
-  padr::pad(start_val = as.Date("2019-12-01")) %>%
-  replace(., is.na(.), 0) %>%
-  tibbletime::as_tbl_time(index=Date) %>% 
-  mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
-  filter(Date < Sys.Date())
-
-remove(fatalities.US.wikipedia)
-saveRDS(fatalities.US,"data/fatalities.US.rds")
-
-# # Get country level data
+# # Get County level data
 # US.counties <- read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv")
 # 
 # US.counties <- US.counties %>% 
