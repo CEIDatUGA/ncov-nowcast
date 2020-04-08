@@ -100,10 +100,10 @@ get_nowcast <- function(admin, cases, fatalities, params) {
   return(nowcast)
 }
 
-start.time <- proc.time()
+# start.time <- proc.time()
 US <- get_nowcast(admin = "US", cases = cases.US, fatalities = fatalities.US, params.US)
 saveRDS(US,"data/US.nowcast.from.cases.rds")
-(proc.time()-start.time)['elapsed']/60
+# (proc.time()-start.time)['elapsed']/60
 
 # Export single plot
 p <- plot_nowcast_from_case_reports(US, plotcumulative = TRUE, maxy = 10^8, legend = TRUE)
@@ -112,7 +112,7 @@ htmlwidgets::saveWidget(p, "USnowcast_plot.html")
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 US <- readRDS("data/US.nowcast.from.cases.rds")
-plot_nowcast_from_case_reports(US, plotcumulative = TRUE, maxy = 10^8, legend = TRUE)
+plot_nowcast_from_case_reports(US, maxy = 10^8, legend = TRUE)
 ```
 
 <!-- ```{r uncorrected} -->
@@ -186,7 +186,7 @@ WA <- get_nowcast("WA", cases.US, fatalities.US, params.US)
 WI <- get_nowcast("WI", cases.US, fatalities.US, params.US)
 WY <- get_nowcast("WY", cases.US, fatalities.US, params.US)
 GU <- get_nowcast("GU", cases.US, fatalities.US, params.US)
-# MP <- get_nowcast("MP", cases.US, fatalities.US, params.US) # not enough data
+MP <- get_nowcast("MP", cases.US, fatalities.US, params.US) # not enough data
 PR <- get_nowcast("PR", cases.US, fatalities.US, params.US)
 VI <- get_nowcast("VI", cases.US, fatalities.US, params.US)
 # (proc.time()-start.time)['elapsed']/60
@@ -447,10 +447,10 @@ plot_nowcast_from_case_reports(WY,  maxy = 10^7)
 plot_nowcast_from_case_reports(GU,  maxy = 10^7)
 ```
 
-<!-- ### Northern Mariana Islands -->
-<!-- ```{r MP, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'} -->
-<!-- plot_nowcast_from_case_reports(MP) -->
-<!-- ``` -->
+### Northern Mariana Islands
+```{r MP, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(MP)
+```
 
 ### Puerto Rico
 ```{r PR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
