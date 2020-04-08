@@ -212,47 +212,53 @@ backward_propagate_linelist <- function (linelist, interval) {
 ## Get onset curve for range of dates from linelist
 
 get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
-  dates <- range(dates)
+  # dates <- range(dates)
   onset.curve <- linelist %>% 
     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
     count(onset.date) %>% 
-    padr::pad(interval = "day", start_val = dates[1L], end_val = dates[2L])
+    padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
   
-  if(is.numeric(interval)){
-    interval <- list(mean=interval[1], sd=0)
-  }else{
-    if(interval$dist == "exponential") {
-      interval$sd <- sqrt((1/interval$mean)^2) # exponential
-    }
-    if(interval$dist == "gamma") {
-      interval$scale <- interval$mean/interval$shape # gamma
-      interval$sd <- sqrt(interval$shape*interval$scale^2) # gamma
-    }
-    if(interval$dist == "skewnormal") {
-      # if SD provided as a parameter of interval, do nothing
-      # if sd not provided, 
-      if(is.null(interval$sd)){
-        delta <- interval$shape / (sqrt(1 + interval$shape^2))
-        variance <- interval$scale^2 * (1 - (2 * delta)/pi )
-        interval$sd <- sqrt(variance) 
-      }
-    }
-    if(interval$dist == "lognormal") {
-      # Do nothing. sd must be provided
-    }
-  }
+  # if(is.numeric(interval)){
+  #   interval <- list(mean=interval[1], sd=0)
+  # }else{
+  #   if(interval$dist == "exponential") {
+  #     interval$sd <- sqrt((1/interval$mean)^2) # exponential
+  #   }
+  #   if(interval$dist == "gamma") {
+  #     interval$scale <- interval$mean/interval$shape # gamma
+  #     interval$sd <- sqrt(interval$shape*interval$scale^2) # gamma
+  #   }
+  #   if(interval$dist == "skewnormal") {
+  #     # if SD provided as a parameter of interval, do nothing
+  #     # if sd not provided, 
+  #     if(is.null(interval$sd)){
+  #       delta <- interval$shape / (sqrt(1 + interval$shape^2))
+  #       variance <- interval$scale^2 * (1 - (2 * delta)/pi )
+  #       interval$sd <- sqrt(variance) 
+  #     }
+  #   }
+  #   if(interval$dist == "lognormal") {
+  #     # Do nothing. sd must be provided
+  #   }
+  # }
   
+  interval$sd <- get_sd(interval)
   natail <- interval$mean+interval$sd*2
   if(!is.null(next_intervals)){
     for(i in 1:length(next_intervals)){
+      next_intervals[[i]]$sd <- get_sd(next_intervals[[i]])
       natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
     }
   }
   
+  # NA replace
+  onset.curve$n <- replace_na(onset.curve$n, 0)
+  
   # set last several values to NA
-  onset.curve <- tail_na(onset.curve,
-                         round(natail) 
-                         )
+  onset.curve$n <- tail_na(onset.curve$n,round(natail))
+  
+  onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
+
   onset.curve
 }
 
@@ -298,9 +304,11 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
     }
   }
   
-  # cat("\n")
+  # NA replace
+  values <- values %>% replace_na(0)
+  
+  # set last several values to NA
   values <- tail_na(values, round(natail))
-  # cat(values)
   
   state.curve <- tibble(
     date = dates, 
@@ -481,8 +489,9 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   if(minimal == FALSE){
     E.onset <- get_onset_curve(dates = database$Date,
                                linelist = E.linelist,
-                               interval = params$incubation.period)
-    database$E.onset <- E.onset$n
+                               interval = params$incubation.period,
+                               next_intervals = list(params$effective.infectious.period))
+    database$E.onset <- E.onset$value
   }
   
   # # E (detected)
@@ -807,7 +816,7 @@ get_ascertainment <- function(cases, deaths, params, window = 7) {
 
 # plot nowcast from case reports
 
-plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumulative = FALSE, maxy = 10^7, logy = TRUE, legend = FALSE) {
+plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumulative = TRUE, maxy = 10^7, logy = TRUE, legend = FALSE) {
   
   col.cases <- 'rgba(0, 0, 0, .35)'
   col.deaths <- 'rgba(0, 0, 0, 1.0)'
