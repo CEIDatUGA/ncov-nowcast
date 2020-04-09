@@ -49,6 +49,13 @@ tail_na <- function(data, tail, columns=NULL) {
   return(d)
 }
 
+# set infities and NaN's to NA
+
+na_not_finite <- function(x){
+  x[!is.finite(x)] <- NA
+  return(x)
+}
+
 # get sd of distribution
 
 get_sd <- function(...){
@@ -110,6 +117,64 @@ rowwise_confidence_intervals <- function(df,interval) {
     out$upper[i] <- v_mean + error
   }
   return(out)
+}
+
+# Smoother
+
+# x: the vector
+# n: the number of samples
+# centered: if FALSE, then average current sample and previous (n-1) samples
+#           if TRUE, then average symmetrically in past and future. (If n is even, use one more sample from future.)
+movingAverage <- function(x, window=1, centered=TRUE) {
+  
+  if (centered) {
+    before <- floor  ((window-1)/2)
+    after  <- ceiling((window-1)/2)
+  } else {
+    before <- window-1
+    after  <- 0
+  }
+  
+  # Track the sum and count of number of non-NA items
+  s     <- rep(0, length(x))
+  count <- rep(0, length(x))
+  
+  # Add the centered data 
+  new <- x
+  # Add to count list wherever there isn't a 
+  count <- count + !is.na(new)
+  # Now replace NA_s with 0_s and add to total
+  new[is.na(new)] <- 0
+  s <- s + new
+  
+  # Add the data from before
+  i <- 1
+  while (i <= before) {
+    # This is the vector with offset values to add
+    new   <- c(rep(NA, i), x[1:(length(x)-i)])
+    
+    count <- count + !is.na(new)
+    new[is.na(new)] <- 0
+    s <- s + new
+    
+    i <- i+1
+  }
+  
+  # Add the data from after
+  i <- 1
+  while (i <= after) {
+    # This is the vector with offset values to add
+    new   <- c(x[(i+1):length(x)], rep(NA, i))
+    
+    count <- count + !is.na(new)
+    new[is.na(new)] <- 0
+    s <- s + new
+    
+    i <- i+1
+  }
+  
+  # return sum divided by count
+  s/count
 }
 
 # Simulate from time varying distribution
@@ -651,6 +716,25 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   }
   
   
+  # R effective
+  if(minimal == FALSE){
+    
+    database <- database %>%
+      mutate(R_eff.mean = na_not_finite(params$effective.infectious.period$mean * 
+                                        rowSums(dplyr::select(., E.onset, E.onset.forecast.mean), na.rm = TRUE) /
+                                        rowSums(dplyr::select(., I, I.forecast.mean), na.rm = TRUE)
+                                        ),
+             R_eff.lower = na_not_finite(params$effective.infectious.period$mean *
+                                         rowSums(dplyr::select(., E.onset, E.onset.forecast.lower80), na.rm = TRUE) / 
+                                         rowSums(dplyr::select(., I, I.forecast.lower80), na.rm = TRUE)
+                                        ),
+             R_eff.upper = na_not_finite(params$effective.infectious.period$mean *
+                                         rowSums(dplyr::select(., E.onset, E.onset.forecast.upper80), na.rm = TRUE) /
+                                         rowSums(dplyr::select(., I, I.forecast.upper80), na.rm = TRUE)
+                                        )
+             )
+  }
+  
   return(database)
 }
 
@@ -1105,60 +1189,95 @@ plot_ascertainment <- function(ascertainment){
 }
 
 
-# Smoother
-
-# x: the vector
-# n: the number of samples
-# centered: if FALSE, then average current sample and previous (n-1) samples
-#           if TRUE, then average symmetrically in past and future. (If n is even, use one more sample from future.)
-movingAverage <- function(x, window=1, centered=TRUE) {
+Plot_R_effective <- function(database, legend=TRUE) {
+  col.cases <- 'rgba(0, 0, 0, 1)'
+  col.I <- 'rgba(230, 7, 7, .75)'
+  col.I.ci <- 'rgba(230, 7, 7, .25)'
+  col.E <- 'rgba(7, 164, 181, 0.75)'
+  col.E.ci <- 'rgba(7, 164, 181, 0.0)'
+  col.nowcast <- 'rgba(7, 7, 230, 0.75)'
+  col.nowcast.ci <- 'rgba(7, 7, 230, 0.25)'
+  col.other = 'rgb(164, 0, 181, .75)'         
+  col.other.ci = 'rgb(164, 0, 181, .25)'
   
-  if (centered) {
-    before <- floor  ((window-1)/2)
-    after  <- ceiling((window-1)/2)
-  } else {
-    before <- window-1
-    after  <- 0
+  ci.lwd <- .5
+  mean.lwd <- 1
+  data.lwd <- 2
+  
+  serif <- function(x) {
+    htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
   }
   
-  # Track the sum and count of number of non-NA items
-  s     <- rep(0, length(x))
-  count <- rep(0, length(x))
-  
-  # Add the centered data 
-  new <- x
-  # Add to count list wherever there isn't a 
-  count <- count + !is.na(new)
-  # Now replace NA_s with 0_s and add to total
-  new[is.na(new)] <- 0
-  s <- s + new
-  
-  # Add the data from before
-  i <- 1
-  while (i <= before) {
-    # This is the vector with offset values to add
-    new   <- c(rep(NA, i), x[1:(length(x)-i)])
-    
-    count <- count + !is.na(new)
-    new[is.na(new)] <- 0
-    s <- s + new
-    
-    i <- i+1
+  display <- function(x) {
+    format(round(x,2), big.mark=",", trim = TRUE)
   }
   
-  # Add the data from after
-  i <- 1
-  while (i <= after) {
-    # This is the vector with offset values to add
-    new   <- c(x[(i+1):length(x)], rep(NA, i))
-    
-    count <- count + !is.na(new)
-    new[is.na(new)] <- 0
-    s <- s + new
-    
-    i <- i+1
-  }
+  plotfont <- list(family = "serif")
+  hoverlabel <- list(namelength = -1,
+                     font = list(family = "serif"))
   
-  # return sum divided by count
-  s/count
+  p_Reff <- plotly::plot_ly(data = database, x = ~Date , y = ~R_eff.mean, type = 'scatter',
+                                     name = 'R (mean)', mode = 'lines',
+                                     line = list(color = col.other, width = data.lwd),
+                            hoverinfo = "x+text",
+                            hoverlabel = hoverlabel,
+                            text = ~paste("mean R =", display(R_eff.mean),"\n",
+                                          "(range:", display(R_eff.lower), "to",
+                                          display(R_eff.upper),")")) %>%
+    plotly::add_trace(y = ~R_eff.upper,
+                      name = 'upper 80% confidence', mode = 'lines',
+                      line = list(color = col.other, width = ci.lwd, dash = 'dot'),
+                      hoverinfo = "none") %>%
+    plotly::add_trace(y = ~R_eff.lower,
+                      name = 'lower 80% confidence', mode = 'lines',
+                      line = list(color = col.other, width = ci.lwd),
+                      hoverinfo = "none") %>%
+    plotly::layout(yaxis = list(# type = "log", 
+                                # tickformat = ".2%", 
+                                title="Effective Reproduction Number (R)")) %>% 
+    plotly::layout(shapes = list(list(type = "line", 
+                                      line = list(color = "black", width=2, dash = "dot"), 
+                                      xref = "x", yref = "y",
+                                      x0 = ~min(Date), x1 = ~max(Date), 
+                                      y0 = 1, y1 = 1)),
+                   annotations = list(yref = 'y', xref = 'paper',
+                                      y = 1, x = .1, align = "left",
+                                      text = "R = 1",
+                                      showarrow = FALSE,
+                                      xanchor = "left", yanchor = "bottom"),
+                   yaxis = list(range=c(0,40), spikethickness = 0),
+                   xaxis = list(spikethickness = 1,
+                                spikedash = "dot",
+                                spikecolor = "black",
+                                spikemode = "across+marker",
+                                spikesnap = "cursor"),
+                   hovermode = 'x',
+                   hoverdistance = 1,
+                   # legend = list()
+                   showlegend = legend
+    )
+  
+  
+  
+  
+  
+  p_Reff
 }
+  
+  
+
+
+# subplots <- list(p_Reff, p_nowcast_logy)
+# dash <- plotly::subplot(subplots, nrows = length(subplots), shareX = TRUE, titleY = TRUE) %>%
+#   plotly::layout(
+#     xaxis = list(
+#       spikethickness = 1,
+#       spikedash = "dot",
+#       spikecolor = "black",
+#       spikemode = "across+marker",
+#       spikesnap = "cursor"
+#     ),
+#     yaxis = list(spikethickness = 0)
+#   )
+# dash
+
