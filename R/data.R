@@ -1,7 +1,7 @@
 library(tidyverse)
 library(tibbletime)
 library(padr)
-library(rvest)
+# library(rvest)
 
 # Get Data from GitHub repo "CEIDatUGA/COVID-19-DATA" (from Wikipedia)
 

@@ -186,7 +186,7 @@ WA <- get_nowcast("WA", cases.US, fatalities.US, params.US)
 WI <- get_nowcast("WI", cases.US, fatalities.US, params.US)
 WY <- get_nowcast("WY", cases.US, fatalities.US, params.US)
 GU <- get_nowcast("GU", cases.US, fatalities.US, params.US)
-MP <- get_nowcast("MP", cases.US, fatalities.US, params.US) # not enough data
+MP <- get_nowcast("MP", cases.US, fatalities.US, params.US)
 PR <- get_nowcast("PR", cases.US, fatalities.US, params.US)
 VI <- get_nowcast("VI", cases.US, fatalities.US, params.US)
 # (proc.time()-start.time)['elapsed']/60
