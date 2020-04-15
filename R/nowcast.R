@@ -1,3 +1,4 @@
+library(parallel)
 library(tidyverse)
 library(tibbletime)
 library(padr)
@@ -217,7 +218,11 @@ backward_simulate_linelist <- function(dates, counts, interval) {
     }
   }
   
-  intervals <- lapply(input$count, get_intervals, interval) %>% unlist()
+  # serial
+  # intervals <- lapply(input$count, get_intervals, interval) %>% unlist()
+
+  # parallel
+  intervals <- mclapply(input$count, get_intervals, interval, mc.cores = detectCores()-1L) %>% unlist()
   
   linelist <- input %>% 
     uncount(count) %>% 
@@ -335,7 +340,11 @@ get_state <- function(date, linelist) {
 
 ## Get state curve for range of dates from linelist
 get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
-  values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
+  # serial
+  # values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
+  
+  # parallel
+  values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = detectCores()-1L) %>% unlist
   
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
