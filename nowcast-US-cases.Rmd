@@ -57,6 +57,12 @@ params.US <- list(
 cases.US <- readRDS('data/cases.US.rds')
 fatalities.US <- readRDS('data/fatalities.US.rds')
 
+# Cutoff date # for debugging
+lastdate <- '2020-04-15' 
+cases.US <- cases.US %>% filter(Date <= lastdate)
+fatalities.US <- fatalities.US %>% filter(Date <= lastdate)
+
+# Cutoff
 cases.US.all <- cases.US %>% dplyr::select(Date, cases = US)
 fatalities.US.all <- fatalities.US %>% dplyr::select(Date, deaths = US)
 
