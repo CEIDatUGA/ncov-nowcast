@@ -1,0 +1,165 @@
+---
+title: "Retrospective Study of Nowcast Performance with data from China"
+author: Éric Marty
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+---
+
+<!-- Knit this page first -->
+
+```{r setup, include=FALSE}
+
+source('R/nowcast.R')
+```
+
+<!-- Get reports for US states -->
+```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+chinadxy <- read_csv("https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/china/China_casedata/dxy_data/province_master.csv")
+
+chinacases <- chinadxy %>%
+  select(-c(X1, ADM0_EN, currentConfirmedCount,suspectedCount,deadCount,curedCount)) %>% 
+  pivot_wider(names_from = ADM1_EN, 
+              values_from = confirmedCount, 
+              values_fill = list(confirmedCount = 0)) %>% 
+  select(-'NA') %>% rename(Date = DATE) %>% arrange(Date) %>% 
+  rename_all(list(~make.names(.))) %>% 
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(CHINA = rowSums(.[,-1],na.rm = TRUE)) %>% 
+  filter(Date < '2020-04-13') %>% 
+  select(Date, cumcases = CHINA) %>% 
+  mutate(cases = c(0, diff(cumcases)))
+
+chinadeaths <- chinadxy %>%
+  select(-c(X1, ADM0_EN, confirmedCount, currentConfirmedCount,suspectedCount,curedCount)) %>% 
+  pivot_wider(names_from = ADM1_EN, 
+              values_from = deadCount, 
+              values_fill = list(deadCount = 0)) %>% 
+  select(-'NA') %>% rename(Date = DATE) %>% arrange(Date) %>% 
+  rename_all(list(~make.names(.))) %>% 
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(CHINA = rowSums(.[,-1],na.rm = TRUE)) %>% 
+  filter(Date < '2020-04-13') %>% 
+  select(Date, cumdeaths = CHINA) %>% 
+  mutate(deaths = c(0, diff(cumdeaths)))
+
+# Params
+params.China <- list(
+  admin = "China", # state or country
+  IFR = .009, 
+  infectious.period = list(dist="exponential", mean=7),   
+  # effective.infectious.period = list(dist="gamma", mean=5.95, shape=2.2788163), 
+  
+  # Tim's numbers:
+  # start = as.Date(c('2019-12-01','2020-01-09','2020-01-19','2020-01-24')),
+  # end = c(as.Date(c('2020-01-08','2020-01-18','2020-01-23')),max(cases$Date)),
+  # mean = c(6.57,4.77,.812,.2),
+  # sd = c(4.78,3.11,1.12,.45),
+  # distribution = "lognorm")
+  effective.infectious.period = list(dist="lognormal", mean=0.2, sd=0.45),
+  
+  incubation.period = list(dist="gamma", mean=5.89, shape=2.4265511), 
+  
+  # from China data: Kenji Mizumoto, Gerardo Chowell. 
+  # "Estimating the risk of 2019 Novel Coronavirus death during the course of the outbreak in China, 2020" 
+  # medRxiv preprint. https://doi.org/10.1101/2020.02.19.20025163
+  onset.to.death.period = list(dist="gamma", mean = 16, shape = 4) # also used for US nowcast
+)
+```
+
+```{r data2, include=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+get_nowcast <- function(casesdf, fatalitiesdf, params) {
+  nowcast <- casesdf %>% select(Date, cases) %>% tbl_time(index = Date) %>% 
+    nowcast_from_case_reports(params)
+  
+  nowcast$deaths <- fatalitiesdf %>% pull(deaths)
+  nowcast$cum.deaths <- fatalitiesdf %>% pull(cumdeaths)
+  return(nowcast)
+}
+
+
+# Cutoff date
+lastdate <- as.Date('2020-04-15')
+testdates <- seq(lastdate-80,lastdate,by=10)
+
+for(i in 1:length(testdates)) {
+  chinacases.filt <- chinacases %>% filter(Date <= testdates[i])
+  chinadeaths.filt <- chinadeaths %>% filter(Date <= testdates[i])
+  
+  # calculate and load ascertainment (time varying q with upper and lower bounds)
+  params.China$q <- get_ascertainment(chinacases.filt, chinadeaths.filt, params.China, window = 7)
+  
+  nowcast <- get_nowcast(cases = chinacases.filt, 
+                         fatalities = chinadeaths.filt, 
+                         params = params.China)
+  assign(paste0("china_", format(as.Date(testdates[i]),format='%Y%m%d')), nowcast) 
+  
+  db <- paste0("china_", format(as.Date(testdates[i]),format='%Y%m%d'))
+  p <- plot_nowcast_from_case_reports(get(db), maxy = 10^7) %>% 
+    plotly::layout(xaxis = list(range=range(chinacases$Date)))
+  assign(paste0("p_", i), p)
+}
+
+```
+
+## {.tabset .tabset-fade}
+
+### `r testdates[1]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_1
+```
+
+### `r testdates[2]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_2
+```
+
+### `r testdates[3]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_3
+```
+
+### `r testdates[4]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_4
+```
+
+### `r testdates[5]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_5
+```
+
+### `r testdates[6]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_6
+```
+
+### `r testdates[7]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_7
+```
+
+### `r testdates[8]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_8
+```
+
+### `r testdates[9]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_9
+```
+
+### Params
+
+Incubation: `r params.China$incubation.period$dist`, mean = `r params.China$incubation.period$mean`, shape = `r params.China$incubation.period$shape`
+
+Onset-to-reporting: `r params.China$effective.infectious.period$dist`, mean = `r params.China$effective.infectious.period$mean`, sd = `r params.China$effective.infectious.period$sd`
+
+

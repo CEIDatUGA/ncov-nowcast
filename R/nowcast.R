@@ -878,7 +878,7 @@ get_ascertainment <- function(cases, deaths, params, window = 7) {
   
   lastvalue <- function(x) {tail(x[!is.na(x)],1)}
   
-  if(nrow(ascertainment) < nrow(cases.US.all)){
+  if(nrow(ascertainment) < nrow(cases)){
     # mean.pad <- tail(ascertainment$mean,1)
     # upper.pad <- tail(ascertainment$upper,1)
     # lower.pad <- tail(ascertainment$lower,1)
@@ -886,7 +886,7 @@ get_ascertainment <- function(cases, deaths, params, window = 7) {
     # upper.smooth.pad <- tail(ascertainment$upper.raw,1)
     # lower.smooth.pad <- tail(ascertainment$lower.raw,1)
     ascertainment <- ascertainment %>%
-      padr::pad(end_val = max(cases.US.all$Date)) 
+      padr::pad(end_val = max(cases$Date)) 
   }
   
   ascertainment$mean[is.na(ascertainment$mean)] <- lastvalue(ascertainment$mean)
