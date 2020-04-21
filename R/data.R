@@ -10,10 +10,10 @@ library(padr)
 path <- "https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/US/US_wikipedia_cases_fatalities/"
 
 cases.US <- read_csv(paste0(path, "UScases_by_state_wikipedia.csv")) %>% 
-  filter(Date != c("Total") & Date != c("Date")) %>% 
+  # filter(Date != c("Total") & Date != c("Date")) %>% 
   select(-c("Conf_New", "Conf_Cml", "deaths_New", "deaths_Cml", "Rec_New", "Rec_Cml", "time_last_update")) %>% 
   mutate_at(vars(-Date), as.integer) %>% 
-  mutate(Date = as.Date(paste(Date, "2020"), "%b %d %Y")) %>% 
+  # mutate(Date = as.Date(Date, "%Y-%m-%d")) %>% 
   padr::pad(start_val = as.Date("2019-12-01")) %>%
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date) %>% 
@@ -26,10 +26,10 @@ saveRDS(cases.US,"data/cases.US.rds")
 # FATALITIES
 
 fatalities.US <- read_csv(paste0(path, "USfatalities_by_state_wikipedia.csv")) %>% 
-  filter(Date != c("Total") & Date != c("Date")) %>% 
+  # filter(Date != c("Total") & Date != c("Date")) %>% 
   select(-c("deaths_New", "deaths_Cml", "time_last_update")) %>% 
   mutate_at(vars(-Date), as.integer) %>% 
-  mutate(Date = as.Date(paste(Date, "2020"), "%b %d %Y")) %>% 
+  # mutate(Date = as.Date(paste(Date, "2020"), "%b %d %Y")) %>% 
   padr::pad(start_val = as.Date("2019-12-01")) %>%
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date) %>% 
