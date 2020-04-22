@@ -152,6 +152,11 @@ DC <- get_nowcast("DC", cases.US, fatalities.US, params.US)
 DE <- get_nowcast("DE", cases.US, fatalities.US, params.US)
 FL <- get_nowcast("FL", cases.US, fatalities.US, params.US)
 GA <- get_nowcast("GA", cases.US, fatalities.US, params.US)
+
+# Export single plot
+p <- plot_nowcast_from_case_reports(GA, plotcumulative = TRUE, maxy = 10^7, legend = TRUE)
+htmlwidgets::saveWidget(p, "GAnowcast_plot.html")
+
 HI <- get_nowcast("HI", cases.US, fatalities.US, params.US)
 IA <- get_nowcast("IA", cases.US, fatalities.US, params.US)
 ID <- get_nowcast("ID", cases.US, fatalities.US, params.US)
