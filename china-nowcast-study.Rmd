@@ -1,20 +1,17 @@
 ---
-title: "Retrospective Study of Nowcast Performance with data from China"
-author: Éric Marty
+title: "Validation of Nowcast Performance with data from China"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
     df_print: paged
 ---
 
-<!-- Knit this page first -->
-
 ```{r setup, include=FALSE}
 
 source('R/nowcast.R')
 ```
 
-<!-- Get reports for US states -->
+<!-- Get reports for China -->
 ```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
 
 chinadxy <- read_csv("https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/china/China_casedata/dxy_data/province_master.csv")
@@ -73,7 +70,7 @@ params.China <- list(
 )
 ```
 
-```{r data2, include=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+```{r nowcasts, include=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
 
 get_nowcast <- function(casesdf, fatalitiesdf, params) {
   nowcast <- casesdf %>% select(Date, cases) %>% tbl_time(index = Date) %>% 
@@ -87,9 +84,27 @@ get_nowcast <- function(casesdf, fatalitiesdf, params) {
 
 # Cutoff date
 lastdate <- as.Date('2020-04-15')
-testdates <- seq(lastdate-80,lastdate,by=10)
+testdates <- seq(lastdate-80,lastdate,by=5)
 
-for(i in 1:length(testdates)) {
+# Complete nowcast
+chinacases.filt <- chinacases %>% filter(Date <= lastdate)
+chinadeaths.filt <- chinadeaths %>% filter(Date <= lastdate)
+
+# calculate and load ascertainment (time varying q with upper and lower bounds)
+params.China$q <- get_ascertainment(chinacases.filt, chinadeaths.filt, params.China, window = 7)
+
+nowcast <- get_nowcast(cases = chinacases.filt, 
+                       fatalities = chinadeaths.filt, 
+                       params = params.China)
+assign(paste0("china_", format(as.Date(lastdate),format='%Y%m%d')), nowcast) 
+
+db_last <- paste0("china_", format(as.Date(lastdate),format='%Y%m%d'))
+p <- plot_nowcast_from_case_reports(get(db_last), maxy = 10^7, plotdeaths = TRUE, plotcumulative = FALSE) %>% 
+  plotly::layout(xaxis = list(range=range(chinacases$Date)))
+assign(paste0("p_", length(testdates)), p)
+  
+  
+for(i in 1:(length(testdates)-1)) {
   chinacases.filt <- chinacases %>% filter(Date <= testdates[i])
   chinadeaths.filt <- chinadeaths %>% filter(Date <= testdates[i])
   
@@ -101,65 +116,136 @@ for(i in 1:length(testdates)) {
                          params = params.China)
   assign(paste0("china_", format(as.Date(testdates[i]),format='%Y%m%d')), nowcast) 
   
+  # dbfill <- get(db_last)
+  # dbfill$cases[dbfill$Date <= testdates[i]] <- NA
+  # 
   db <- paste0("china_", format(as.Date(testdates[i]),format='%Y%m%d'))
-  p <- plot_nowcast_from_case_reports(get(db), maxy = 10^7) %>% 
-    plotly::layout(xaxis = list(range=range(chinacases$Date)))
+  db <- get(db) 
+  # db <- db %>%
+  #   padr::pad(end_val = as.Date(lastdate))
+    
+  p <- plot_nowcast_from_case_reports(db, maxy = 10^7, plotdeaths = TRUE, plotcumulative = FALSE) %>% 
+    plotly::layout(xaxis = list(range=range(chinacases$Date)), title="")
+  # p <- p %>% plotly::add_trace(y = dbfill$cases, type = 'bar',
+  #                   name = 'all cases',
+  #                   marker = list(color = 'lightgrey'))
   assign(paste0("p_", i), p)
 }
 
+
 ```
 
-## {.tabset .tabset-fade}
+The Nowcast is a technique to estimate current levels of infection directly from current case reports without recourse to a mechanistic model. We wished to determine the extent to which the Nowcast is able to respond to changes in the trend of new case reports. For example, we want to know if the Nowcast is responsive to "flattening of the curve," or if it can detect the peak of the epidemic without an inordinate delay.  
 
-### `r testdates[1]`
+To validate the reponsiveness of the Nowcasting technique, we performed a series of Nowcasts for China, using reports of cases and fatalities through April 15, and distributions of intervals derrived from data from China. We first perform a Nowcast as if only data through January 26 had been reported, and then perform additional Nowcasts at intervals of five days, including more and more data each time. The final Nowcast is performed using the complete dataset trhough April 15.
+
+The period in question encompasses the eponential rise in cases, the peak of the outbreak, and the return to near zero.  
+
+Our study demonstrates that the Nowcast is able to respond in a reasonable amount of time to changes in the trend in case count, and is able to detect change in direction with a reasonable delay.
+
+### {.tabset .tabset-fade .tabset-pills}
+
+#### `r testdates[1]`
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 p_1
 ```
 
-### `r testdates[2]`
+#### `r testdates[2]`
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 p_2
 ```
 
-### `r testdates[3]`
+#### `r testdates[3]`
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 p_3
 ```
 
-### `r testdates[4]`
+#### `r testdates[4]`
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 p_4
 ```
 
-### `r testdates[5]`
+#### `r testdates[5]`
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 p_5
 ```
 
-### `r testdates[6]`
+#### `r testdates[6]`
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 p_6
 ```
 
-### `r testdates[7]`
+#### `r testdates[7]`
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 p_7
 ```
 
-### `r testdates[8]`
+#### `r testdates[8]`
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 p_8
 ```
 
-### `r testdates[9]`
+#### `r testdates[9]`
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 p_9
 ```
 
-### Params
+#### `r testdates[10]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_10
+```
+
+#### `r testdates[11]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_11
+```
+
+#### `r testdates[12]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_12
+```
+
+#### `r testdates[13]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_13
+```
+
+#### `r testdates[14]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_14
+```
+
+#### `r testdates[15]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_15
+```
+
+#### `r testdates[16]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_16
+```
+
+#### `r testdates[17]`
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p_17
+```
+
+### ![](nowcast-legend-combined.png)
+
+### Intervals
 
 Incubation: `r params.China$incubation.period$dist`, mean = `r params.China$incubation.period$mean`, shape = `r params.China$incubation.period$shape`
 
 Onset-to-reporting: `r params.China$effective.infectious.period$dist`, mean = `r params.China$effective.infectious.period$mean`, sd = `r params.China$effective.infectious.period$sd`
 
+### Ascertainment for China
 
+
+```{r ascertainment, echo = FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+plot_ascertainment(params.China$q) %>% plotly::layout(showlegend = FALSE)
+
+
+```
+
+![](nowcast-legend-ascertainment.png)

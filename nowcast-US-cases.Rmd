@@ -112,13 +112,13 @@ saveRDS(US,"data/US.nowcast.from.cases.rds")
 # (proc.time()-start.time)['elapsed']/60
 
 # Export single plot
-p <- plot_nowcast_from_case_reports(US, plotcumulative = TRUE, maxy = 10^8, legend = TRUE)
+p <- plot_nowcast_from_case_reports(US, plotcumulative = TRUE, maxy = 10^8, legend = FALSE)
 htmlwidgets::saveWidget(p, "USnowcast_plot.html")
 ```
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 US <- readRDS("data/US.nowcast.from.cases.rds")
-plot_nowcast_from_case_reports(US, maxy = 10^8, legend = TRUE)
+plot_nowcast_from_case_reports(US, maxy = 10^8, legend = FALSE)
 ```
 
 <!-- ```{r uncorrected} -->
@@ -134,7 +134,7 @@ plot_nowcast_from_case_reports(US, maxy = 10^8, legend = TRUE)
 
 
 <!-- calculate nowcasts for US states -->
-```{r nowcast_states, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+```{r nowcast_states, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
 # start.time <- proc.time()
 
 # cases.US <- readRDS('data/cases.US.rds')
@@ -154,7 +154,7 @@ FL <- get_nowcast("FL", cases.US, fatalities.US, params.US)
 GA <- get_nowcast("GA", cases.US, fatalities.US, params.US)
 
 # Export single plot
-p <- plot_nowcast_from_case_reports(GA, plotcumulative = TRUE, maxy = 10^7, legend = TRUE)
+p <- plot_nowcast_from_case_reports(GA, plotcumulative = TRUE, maxy = 10^7, legend = FALSE)
 htmlwidgets::saveWidget(p, "GAnowcast_plot.html")
 
 HI <- get_nowcast("HI", cases.US, fatalities.US, params.US)

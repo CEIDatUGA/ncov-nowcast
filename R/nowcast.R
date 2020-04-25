@@ -1081,20 +1081,21 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumu
                            showarrow = FALSE,
                            xanchor = "left")
       )
-  }else{
-    p_nowcast <- p_nowcast %>% 
-      plotly::layout(
-        annotations = list(yref = 'paper', xref = 'paper',
-                           y = 1, x = .1, align = "left",
-                           text = paste("Cumulative case notifications through:",format(max(database$Date),"%B %d, %Y"),
-                                        display(tail(database$cum.cases,1)),"\n",
-                                        "Cumulative deaths through:",format(max(database$Date),"%B %d, %Y"),
-                                        display(tail(database$cum.deaths,1))
-                           ),
-                           showarrow = FALSE,
-                           xanchor = "left")
-      )
   }
+  # }else{
+  #   p_nowcast <- p_nowcast %>% 
+  #     plotly::layout(
+  #       annotations = list(yref = 'paper', xref = 'paper',
+  #                          y = 1, x = .1, align = "left",
+  #                          text = paste("Cumulative case notifications through:",format(max(database$Date),"%B %d, %Y"),
+  #                                       display(tail(database$cum.cases,1)),"\n",
+  #                                       "Cumulative deaths through:",format(max(database$Date),"%B %d, %Y"),
+  #                                       display(tail(database$cum.deaths,1))
+  #                          ),
+  #                          showarrow = FALSE,
+  #                          xanchor = "left")
+  #     )
+  # }
   p_nowcast
 }
 
