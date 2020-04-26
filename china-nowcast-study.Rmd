@@ -100,7 +100,7 @@ assign(paste0("china_", format(as.Date(lastdate),format='%Y%m%d')), nowcast)
 
 db_last <- paste0("china_", format(as.Date(lastdate),format='%Y%m%d'))
 p <- plot_nowcast_from_case_reports(get(db_last), maxy = 10^7, plotdeaths = TRUE, plotcumulative = FALSE) %>% 
-  plotly::layout(xaxis = list(range=range(chinacases$Date)))
+  plotly::layout(xaxis = list(range=range(chinacases$Date)), title="")
 assign(paste0("p_", length(testdates)), p)
   
   
