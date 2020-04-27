@@ -243,7 +243,7 @@ Onset-to-reporting: `r params.China$effective.infectious.period$dist`, mean = `r
 
 ```{r ascertainment, echo = FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 
-plot_ascertainment(params.China$q) %>% plotly::layout(showlegend = FALSE)
+plot_ascertainment(params.China$q) %>% plotly::layout(showlegend = FALSE, yaxis=list(range=c(-4,log10(1))))
 
 
 ```
