@@ -140,16 +140,16 @@ saveRDS(fatalities.US,"data/fatalities.US.rds")
 # remove(fatalities.US.wikipedia)
 # saveRDS(fatalities.US,"data/fatalities.US.rds")
 
-# # Get County level data
-# US.counties <- read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv")
-# 
-# US.counties <- US.counties %>% 
-#   mutate(fips = ifelse(is.na(fips),paste0(county,", ",state),fips))
-# 
-# cases.US.counties <- US.counties %>% select(-deaths)
-# fatalities.US.counties <- US.counties %>% select(-cases)
-# 
-# fips.10deaths <- fatalities.US.counties[fatalities.US.counties$deaths >= 10,]$fips %>% unique
-# 
-# fatalities.US.counties.10deaths <- fatalities.US.counties %>% 
-#   filter(fips %in% fips.10deaths)
+# Get County level data
+US.counties <- read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv")
+
+US.counties <- US.counties %>%
+  mutate(fips = ifelse(is.na(fips),paste0(county,", ",state),fips))
+
+cases.US.counties <- US.counties %>% select(-deaths)
+fatalities.US.counties <- US.counties %>% select(-cases)
+
+fips.10deaths <- fatalities.US.counties[fatalities.US.counties$deaths >= 10,]$fips %>% unique
+
+fatalities.US.counties.10deaths <- fatalities.US.counties %>%
+  filter(fips %in% fips.10deaths)
