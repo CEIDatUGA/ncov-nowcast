@@ -16,6 +16,7 @@ cases.US <- read_csv(paste0(path, "UScases_by_state_wikipedia.csv")) %>%
   # mutate(Date = as.Date(Date, "%Y-%m-%d")) %>% 
   padr::pad(start_val = as.Date("2019-12-01")) %>%
   replace(., is.na(.), 0) %>%
+  replace(., . < 0, 0) %>%
   tibbletime::as_tbl_time(index=Date) %>% 
   mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
   filter(Date < Sys.Date())
@@ -32,6 +33,7 @@ fatalities.US <- read_csv(paste0(path, "USfatalities_by_state_wikipedia.csv")) %
   # mutate(Date = as.Date(paste(Date, "2020"), "%b %d %Y")) %>% 
   padr::pad(start_val = as.Date("2019-12-01")) %>%
   replace(., is.na(.), 0) %>%
+  replace(., . < 0, 0) %>%
   tibbletime::as_tbl_time(index=Date) %>% 
   mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
   filter(Date < Sys.Date())

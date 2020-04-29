@@ -134,7 +134,7 @@ plot_nowcast_from_case_reports(US, maxy = 10^8, legend = FALSE)
 
 
 <!-- calculate nowcasts for US states -->
-```{r nowcast_states, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+```{r nowcast_states, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 # start.time <- proc.time()
 
 # cases.US <- readRDS('data/cases.US.rds')
@@ -198,7 +198,7 @@ WI <- get_nowcast("WI", cases.US, fatalities.US, params.US)
 WY <- get_nowcast("WY", cases.US, fatalities.US, params.US)
 GU <- get_nowcast("GU", cases.US, fatalities.US, params.US)
 MP <- get_nowcast("MP", cases.US, fatalities.US, params.US)
-PR <- get_nowcast("PR", cases.US, fatalities.US, params.US)
+# PR <- get_nowcast("PR", cases.US, fatalities.US, params.US)
 VI <- get_nowcast("VI", cases.US, fatalities.US, params.US)
 # (proc.time()-start.time)['elapsed']/60
 ```
@@ -465,8 +465,10 @@ plot_nowcast_from_case_reports(MP)
 
 ### Puerto Rico
 ```{r PR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(PR,  maxy = 10^7)
+# plot_nowcast_from_case_reports(PR,  maxy = 10^7)
 ```
+
+Nowcast for Puerto Rico temporarily offline.
 
 ### US Virgin Islands
 ```{r VI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
