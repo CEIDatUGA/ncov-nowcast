@@ -46,7 +46,7 @@ Here we detail a method for accomplishing this from two sources of data:
 
 #### Estimating from case reports, informed by an estimate from fatalities
 
-Case reports do not include infected persons who are symptomatic but not yet diagnosed, nor individuals with latent infections (those who carry the virus but are not *yet* symptomatic). If testing were perfect and universal, we would detect 100% of cases. In reality, we miss many because of imperfect surveillance. The ratio of detected cases to the true number of cases is the **ascertainment rate**, which can vary over time. The **ascertainment rate** is the ratio of .
+Case reports do not include infected persons who are symptomatic but not yet diagnosed, nor individuals with latent infections (those who carry the virus but are not *yet* symptomatic). If testing were perfect and universal, we would detect 100% of cases. In reality, we miss many because of imperfect surveillance. The ratio of detected cases to the true number of cases is the **ascertainment rate**, which can vary over time.
 
 If we know the ascertainment rate, as well as the distribution of times from infection to symptom onset and from symptom onset to case reporting, we can use case reports to estimate infection times for those cases. That gives us information about the number of latent and symptomatic infections present at some point in the past. We can forecast those curves from that point in the past up to the present to derive an estimate of the number of infections present now. This is the "Nowcast."
 
