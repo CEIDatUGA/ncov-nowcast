@@ -118,6 +118,7 @@ htmlwidgets::saveWidget(p, "USnowcast_plot.html")
 
 ```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 US <- readRDS("data/US.nowcast.from.cases.rds")
+# Plot_R_effective(US, legend = FALSE)
 plot_nowcast_from_case_reports(US, maxy = 10^8, legend = FALSE)
 ```
 

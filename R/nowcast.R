@@ -434,6 +434,38 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
   forecast
 }
 
+### START HERE
+# get R_effective
+# burnin <- get_sd(interval)*2
+# get_R_eff <- function(database, burnin = 0) {
+#   # dates <- range(dates)
+#   onset.curve <- linelist %>% 
+#     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
+#     count(onset.date) %>% 
+#     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
+#   
+#   interval$sd <- get_sd(interval)
+#   natail <- interval$mean+interval$sd*2
+#   if(!is.null(next_intervals)){
+#     for(i in 1:length(next_intervals)){
+#       next_intervals[[i]]$sd <- get_sd(next_intervals[[i]])
+#       natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
+#     }
+#   }
+#   
+#   # NA replace
+#   onset.curve$n <- replace_na(onset.curve$n, 0)
+#   
+#   # set last several values to NA
+#   onset.curve$n <- tail_na(onset.curve$n,round(natail))
+#   
+#   onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
+#   
+#   onset.curve
+# }
+### END HERE
+
+
 # nowcast from case reports
 
 nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, minimal=FALSE) {
@@ -728,6 +760,11 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   # R effective
   if(minimal == FALSE){
     
+    ### START HERE
+    # burnin <- get_sd(params$effective.infectious.period)*2
+    # 
+    # tmp_I <- 
+    
     database <- database %>%
       mutate(R_eff.mean = na_not_finite(params$effective.infectious.period$mean * 
                                         rowSums(dplyr::select(., E.onset, E.onset.forecast.mean), na.rm = TRUE) /
@@ -742,6 +779,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
                                          rowSums(dplyr::select(., I, I.forecast.upper80), na.rm = TRUE)
                                         )
              )
+    
   }
   
   return(database)
@@ -1207,7 +1245,7 @@ Plot_R_effective <- function(database, legend=TRUE) {
   col.E.ci <- 'rgba(7, 164, 181, 0.0)'
   col.nowcast <- 'rgba(7, 7, 230, 0.75)'
   col.nowcast.ci <- 'rgba(7, 7, 230, 0.25)'
-  col.other = 'rgb(164, 0, 181, .75)'         
+  col.other = 'rgb(164, 0, 181, .75)'
   col.other.ci = 'rgb(164, 0, 181, .25)'
   
   ci.lwd <- .5
