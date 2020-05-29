@@ -1,0 +1,134 @@
+---
+title: "Hubei Province single nowcast"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+
+source('R/nowcast.R')
+```
+
+<!-- Get reports for China -->
+```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+chinadxy <- read_csv("https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/china/China_casedata/dxy_data/province_master.csv")
+
+hubeicases <- chinadxy %>%
+  select(-c(X1, ADM0_EN, currentConfirmedCount,suspectedCount,deadCount,curedCount)) %>% 
+  pivot_wider(names_from = ADM1_EN, 
+              values_from = confirmedCount, 
+              values_fill = list(confirmedCount = 0)) %>% 
+  select(-'NA') %>% rename(Date = DATE) %>% arrange(Date) %>% 
+  rename_all(list(~make.names(.))) %>% 
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(CHINA = rowSums(.[,-1],na.rm = TRUE)) %>% 
+  filter(Date < '2020-04-13') %>%
+  select(Date, cumcases = Hubei.Province) %>% 
+  mutate(cases = c(0, diff(cumcases)))
+
+hubeideaths <- chinadxy %>%
+  select(-c(X1, ADM0_EN, confirmedCount, currentConfirmedCount,suspectedCount,curedCount)) %>% 
+  pivot_wider(names_from = ADM1_EN, 
+              values_from = deadCount, 
+              values_fill = list(deadCount = 0)) %>% 
+  select(-'NA') %>% rename(Date = DATE) %>% arrange(Date) %>% 
+  rename_all(list(~make.names(.))) %>% 
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(CHINA = rowSums(.[,-1],na.rm = TRUE)) %>% 
+  filter(Date < '2020-04-13') %>%
+  select(Date, cumdeaths = Hubei.Province) %>% 
+  mutate(deaths = c(0, diff(cumdeaths)))
+
+# Params
+params.hubei <- list(
+  admin = "Hubei", # state or country
+  IFR = .009, 
+  infectious.period = list(dist="exponential", mean=7),   
+  # effective.infectious.period = list(dist="gamma", mean=5.95, shape=2.2788163), 
+  
+  # Tim's numbers:
+  # start = as.Date(c('2019-12-01','2020-01-09','2020-01-19','2020-01-24')),
+  # end = c(as.Date(c('2020-01-08','2020-01-18','2020-01-23')),max(cases$Date)),
+  # mean = c(6.57,4.77,.812,.2),
+  # sd = c(4.78,3.11,1.12,.45),
+  # distribution = "lognorm")
+  effective.infectious.period = list(dist="lognormal", mean=0.2, sd=0.45),
+  
+  incubation.period = list(dist="gamma", mean=5.89, shape=2.4265511), 
+  
+  # from China data: Kenji Mizumoto, Gerardo Chowell. 
+  # "Estimating the risk of 2019 Novel Coronavirus death during the course of the outbreak in China, 2020" 
+  # medRxiv preprint. https://doi.org/10.1101/2020.02.19.20025163
+  onset.to.death.period = list(dist="gamma", mean = 16, shape = 4) # also used for US nowcast
+)
+```
+
+```{r nowcasts, include=FALSE, message = FALSE, warning = FALSE, cache = TRUE}
+
+get_nowcast <- function(casesdf, fatalitiesdf, params) {
+  nowcast <- casesdf %>% select(Date, cases) %>% tbl_time(index = Date) %>% 
+    nowcast_from_case_reports(params)
+  
+  nowcast$deaths <- fatalitiesdf %>% pull(deaths)
+  nowcast$cum.deaths <- fatalitiesdf %>% pull(cumdeaths)
+  return(nowcast)
+}
+
+# calculate and load ascertainment (time varying q with upper and lower bounds)
+params.hubei$q <- get_ascertainment(hubeicases, hubeideaths, params.hubei, window = 7)
+saveRDS(params.hubei,"data/params.hubei.rds")
+
+# nowcast
+nowcast.hubei <- get_nowcast(cases = hubeicases, 
+                       fatalities = hubeideaths, 
+                       params = params.hubei)
+saveRDS(nowcast.hubei,"data/nowcast.hubei.rds")
+
+p.nowcast.hubei <- plot_nowcast_from_case_reports(nowcast.hubei, maxy = 10^7, plotdeaths = TRUE, plotcumulative = TRUE) %>% 
+  plotly::layout(xaxis = list(range=range(hubeicases$Date)), title="")
+
+```
+
+The Nowcast is a technique to estimate current levels of infection directly from current case reports without recourse to a mechanistic model. We wished to determine the extent to which the Nowcast is able to respond to changes in the trend of new case reports. For example, we want to know if the Nowcast is responsive to "flattening of the curve," or if it can detect the peak of the epidemic without an inordinate delay.  
+
+To validate the reponsiveness of the Nowcasting technique, we performed a series of Nowcasts for China, using reports of cases and fatalities through April 15, and distributions of intervals derrived from data from China. We first perform a Nowcast as if only data through January 26 had been reported, and then perform additional Nowcasts at intervals of five days, including more and more data each time. The final Nowcast is performed using the complete dataset trhough April 15.
+
+The period in question encompasses the eponential rise in cases, the peak of the outbreak, and the return to near zero.  
+
+Our study demonstrates that the Nowcast is able to respond in a reasonable amount of time to changes in the trend in case count, and is able to detect change in direction with a reasonable delay.
+
+### Nowcast for Hubei Province as of April 13, 2020
+
+```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+p.nowcast.hubei
+```
+
+### ![](nowcast-legend-combined.png)
+
+### Parameters
+
+Incubation Period: `r params.hubei$incubation.period$dist`, mean = `r params.hubei$incubation.period$mean`, shape = `r params.hubei$incubation.period$shape`
+
+Onset-to-reporting Period: `r params.hubei$effective.infectious.period$dist`, mean = `r params.hubei$effective.infectious.period$mean`, sd = `r params.hubei$effective.infectious.period$sd`
+
+Onset-to-death Period: `r params.hubei$onset.to.death.period$dist`, mean = `r params.hubei$onset.to.death.period$mean`, shape = `r params.hubei$onset.to.death.period$shape`)
+
+Infection Fatality Rate: `r params.hubei$IFR`
+
+### Ascertainment for Hubei
+
+
+```{r ascertainment, echo = FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+
+plot_ascertainment(params.hubei$q) %>% plotly::layout(showlegend = FALSE, yaxis=list(range=c(-4,log10(1))))
+
+```
+
+![](nowcast-legend-ascertainment.png)
