@@ -96,14 +96,6 @@ p.nowcast.hubei <- plot_nowcast_from_case_reports(nowcast.hubei, maxy = 10^7, pl
 
 ```
 
-The Nowcast is a technique to estimate current levels of infection directly from current case reports without recourse to a mechanistic model. We wished to determine the extent to which the Nowcast is able to respond to changes in the trend of new case reports. For example, we want to know if the Nowcast is responsive to "flattening of the curve," or if it can detect the peak of the epidemic without an inordinate delay.  
-
-To validate the reponsiveness of the Nowcasting technique, we performed a series of Nowcasts for China, using reports of cases and fatalities through April 15, and distributions of intervals derrived from data from China. We first perform a Nowcast as if only data through January 26 had been reported, and then perform additional Nowcasts at intervals of five days, including more and more data each time. The final Nowcast is performed using the complete dataset trhough April 15.
-
-The period in question encompasses the eponential rise in cases, the peak of the outbreak, and the return to near zero.  
-
-Our study demonstrates that the Nowcast is able to respond in a reasonable amount of time to changes in the trend in case count, and is able to detect change in direction with a reasonable delay.
-
 ### Nowcast for Hubei Province as of April 13, 2020
 
 ```{r, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
