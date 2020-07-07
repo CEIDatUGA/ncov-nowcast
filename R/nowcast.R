@@ -1237,7 +1237,7 @@ plot_ascertainment <- function(ascertainment){
 }
 
 
-Plot_R_effective <- function(database, legend=TRUE) {
+plot_R_effective <- function(database, legend=TRUE) {
   col.cases <- 'rgba(0, 0, 0, 1)'
   col.I <- 'rgba(230, 7, 7, .75)'
   col.I.ci <- 'rgba(230, 7, 7, .25)'
