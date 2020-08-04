@@ -134,8 +134,8 @@ plot_nowcast_from_case_reports(Global, maxy = 10^8, legend = FALSE)
 <!-- plot_nowcast_from_case_reports(US.all.uncorrected) %>% layout(showlegend = TRUE) -->
 
 <!-- ``` -->
-<!-- calculate nowcasts for US states -->
-```{r nowcast_states, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+<!-- calculate nowcasts for countries -->
+```{r nowcast_countries, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 # start.time <- proc.time()
 
 # cases.US <- readRDS('data/cases.US.rds')
