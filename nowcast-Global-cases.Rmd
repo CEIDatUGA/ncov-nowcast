@@ -361,6 +361,48 @@ YEM <- get_nowcast("Yemen", cases.global, fatalities.global, params.global)
 ZMB <- get_nowcast("Zambia", cases.global, fatalities.global, params.global)                
 ZWE <- get_nowcast("Zimbabwe", cases.global, fatalities.global, params.global)
 
+# The following are countries/states that required additional data partitioning via 'data.global.R'
+# Canada
+CAN <-  get_nowcast("Canada", cases.global, fatalities.global, params.global)
+# China
+CHN <- get_nowcast("China", cases.global, fatalities.global, params.global)
+# Denmark
+DNK <- get_nowcast("Denmark", cases.global, fatalities.global, params.global)#Denmark
+FRO <- get_nowcast("Faroe Islands", cases.global, fatalities.global, params.global)#Faroe Islands
+GRL <- get_nowcast("Greenland", cases.global, fatalities.global, params.global)# Greenland
+#France
+FRA <- get_nowcast("France" , cases.global, fatalities.global, params.global)
+GUF <- get_nowcast("French Guiana", cases.global, fatalities.global, params.global)
+PYF <- get_nowcast("French Polynesia", cases.global, fatalities.global, params.global)
+GLP <- get_nowcast("Guadeloupe", cases.global, fatalities.global, params.global)
+MTQ <- get_nowcast("Martinique", cases.global, fatalities.global, params.global)
+MYT <- get_nowcast("Mayotte", cases.global, fatalities.global, params.global)
+NCL <- get_nowcast("New Caledonia", cases.global, fatalities.global, params.global)
+REU <- get_nowcast("Reunion", cases.global, fatalities.global, params.global)
+BLM <- get_nowcast("Saint Barthelemy", cases.global, fatalities.global, params.global)
+SPM <- get_nowcast("Saint Pierre and Miquelon", cases.global, fatalities.global, params.global)
+MAF <- get_nowcast("St Martin", cases.global, fatalities.global, params.global)
+# Netherlands
+NLD <- get_nowcast( "Netherlands" , cases.global, fatalities.global, params.global)
+ABW <- get_nowcast( "Aruba" , cases.global, fatalities.global, params.global)
+BES <- get_nowcast( "Bonaire, Sint Eustatius and Saba" , cases.global, fatalities.global, params.global)
+CUW <- get_nowcast( "Curacao" , cases.global, fatalities.global, params.global)
+SXM <- get_nowcast( "Sint Maarten" , cases.global, fatalities.global, params.global)
+# UK
+UK <- get_nowcast( "UK"  , cases.global, fatalities.global, params.global)
+AIA <- get_nowcast(  "Anguilla" , cases.global, fatalities.global, params.global)
+BMU <- get_nowcast( "Bermuda"  , cases.global, fatalities.global, params.global)
+VGB <- get_nowcast( "British Virgin Islands"   , cases.global, fatalities.global, params.global)
+CYM <- get_nowcast( "Cayman Islands" , cases.global, fatalities.global, params.global)
+GB  <- get_nowcast( "Channel Islands"    , cases.global, fatalities.global, params.global)
+FLK <- get_nowcast( "Falkland Islands (Malvinas)" , cases.global, fatalities.global, params.global)
+GIB <- get_nowcast( "Gibraltar" , cases.global, fatalities.global, params.global)
+IMN <- get_nowcast( "Isle of Man" , cases.global, fatalities.global, params.global)
+MSR <- get_nowcast(  "Montserrat" , cases.global, fatalities.global, params.global)
+TCA <- get_nowcast( "Turks and Caicos Islands" , cases.global, fatalities.global, params.global)
+
+
+
 # (proc.time()-start.time)['elapsed']/60
 ```
 
@@ -389,6 +431,11 @@ plot_nowcast_from_case_reports(AND,  maxy = 10^7)
 plot_nowcast_from_case_reports(AGO,  maxy = 10^7)
 ```
 
+### Anguilla
+```{r AIA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(AIA,  maxy = 10^7)
+```
+
 ### Antigua and Barbuda
 ```{r ATK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(ATK,  maxy = 10^7)
@@ -402,6 +449,11 @@ plot_nowcast_from_case_reports(ARG,  maxy = 10^7)
 ### Armenia
 ```{r ARM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(ARM,  maxy = 10^7)
+```
+
+### Aruba
+```{r ABW, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(ABW,  maxy = 10^7)
 ```
 
 ### Austria
@@ -454,13 +506,22 @@ plot_nowcast_from_case_reports(BLZ,  maxy = 10^7)
 plot_nowcast_from_case_reports(BEN,  maxy = 10^7)
 ```
 
+### Bermuda
+```{r BMU, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(BMU,  maxy = 10^7)
+```
+
 ### Bhutan
 ```{r BTN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(BTN,  maxy = 10^7)
 ```
 
-
 ### Bolivia
+```{r BES, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(BES,  maxy = 10^7)
+```
+
+### Bonaire, Sint Eustatius and Saba
 ```{r BOL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(BOL,  maxy = 10^7)
 ```
@@ -480,11 +541,15 @@ plot_nowcast_from_case_reports(BWA,  maxy = 10^7)
 plot_nowcast_from_case_reports(BRA,  maxy = 10^7)
 ```
 
+### British Virgin Islands
+```{r VGB, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports( VGB ,  maxy = 10^7)
+```
+
 ### Brunei
 ```{r BRN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(BRN,  maxy = 10^7)
 ```
-
 
 ### Bulgaria
 ```{r BGR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
@@ -521,6 +586,16 @@ plot_nowcast_from_case_reports(KHM,  maxy = 10^7)
 plot_nowcast_from_case_reports(CMR,  maxy = 10^7)
 ```
 
+### Canada
+```{r CAN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(CAN,  maxy = 10^7)
+```
+
+### Cayman Islands
+```{r CYM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports( CYM ,  maxy = 10^7)
+```
+
 ### Central African Republic
 ```{r CAF, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(CAF,  maxy = 10^7)
@@ -528,12 +603,22 @@ plot_nowcast_from_case_reports(CAF,  maxy = 10^7)
 
 ### Chad
 ```{r TCD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(,  maxy = 10^7)
+plot_nowcast_from_case_reports(TCD,  maxy = 10^7)
+```
+
+### Channel Islands
+```{r GB, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(GB,  maxy = 10^7)
 ```
 
 ### Chile
 ```{r CHL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(CHL,  maxy = 10^7)
+```
+
+### China
+```{r CHN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(CHN,  maxy = 10^7)
 ```
 
 ### Colombia
@@ -552,8 +637,8 @@ plot_nowcast_from_case_reports(COG,  maxy = 10^7)
 ```
 
 ### Congo (Kinshasa)
-```{r , echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(,  maxy = 10^7)
+```{r COD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports( COD ,  maxy = 10^7)
 ```
 
 ### "Costa Rica"
@@ -576,6 +661,12 @@ plot_nowcast_from_case_reports(HRV,  maxy = 10^7)
 plot_nowcast_from_case_reports(CUB,  maxy = 10^7)
 ```
 
+### Curacao
+```{r CUW, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(CUW,  maxy = 10^7)
+```
+
+
 ### Cyprus
 ```{r CYP, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(CYP,  maxy = 10^7)
@@ -584,6 +675,11 @@ plot_nowcast_from_case_reports(CYP,  maxy = 10^7)
 ### Czechia
 ```{r CZE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(CZE,  maxy = 10^7)
+```
+
+### Denmark
+```{r DNK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(DNK,  maxy = 10^7)
 ```
 
 ### Djibouti
@@ -641,6 +737,16 @@ plot_nowcast_from_case_reports(SWZe,  maxy = 10^7)
 plot_nowcast_from_case_reports(ETH,  maxy = 10^7)
 ```
 
+### Faroe Islands
+```{r FRO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(FRO,  maxy = 10^7)
+```
+
+### Falkland Islands (Malvinas)
+```{r FLK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(FLK,  maxy = 10^7)
+```
+
 ### Fiji
 ```{r FJI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(FJI,  maxy = 10^7)
@@ -651,11 +757,25 @@ plot_nowcast_from_case_reports(FJI,  maxy = 10^7)
 plot_nowcast_from_case_reports(FIN,  maxy = 10^7)
 ```
 
+### France
+```{r FRA echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(FRA,  maxy = 10^7)
+```
+
+### French Guiana
+```{r GUF, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(GUF,  maxy = 10^7)
+```
+
+### French Polynesia
+```{r PYF, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(PYF,  maxy = 10^7)
+```
+
 ### Gabon
 ```{r GAB, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(GAB,  maxy = 10^7)
 ```
-
 
 ### Gambia
 ```{r GMB, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
@@ -677,7 +797,17 @@ plot_nowcast_from_case_reports(DEU,  maxy = 10^7)
 plot_nowcast_from_case_reports(GHA,  maxy = 10^7)
 ```
 
+### Gibraltar
+```{r GIB , echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(GIB ,  maxy = 10^7)
+```
+
 ### Greece
+```{r GRL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(GRL,  maxy = 10^7)
+```
+
+### Greenland
 ```{r GRC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(GRC,  maxy = 10^7)
 ```
@@ -685,6 +815,11 @@ plot_nowcast_from_case_reports(GRC,  maxy = 10^7)
 ### Grenada
 ```{r GRD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(GRD,  maxy = 10^7)
+```
+
+### Guadeloupe
+```{r GLP, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(GLP,  maxy = 10^7)
 ```
 
 ### Guatemala
@@ -757,6 +892,11 @@ plot_nowcast_from_case_reports(IRL,  maxy = 10^7)
 plot_nowcast_from_case_reports(ISR,  maxy = 10^7)
 ```
 
+### Isle of Man
+```{r IMN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(IMN,  maxy = 10^7)
+```
+
 ### Italy
 ```{r ITA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(ITA,  maxy = 10^7)
@@ -827,7 +967,6 @@ plot_nowcast_from_case_reports(LBN,  maxy = 10^7)
 plot_nowcast_from_case_reports(LSO,  maxy = 10^7)
 ```
 
-
 ### Liberia
 ```{r LBR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(LBR,  maxy = 10^7)
@@ -879,6 +1018,11 @@ plot_nowcast_from_case_reports(MLI,  maxy = 10^7)
 ```
 
 ### Malta
+```{r MTQ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(MTQ,  maxy = 10^7)
+```
+
+### Martinique
 ```{r MLT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MLT,  maxy = 10^7)
 ```
@@ -889,6 +1033,11 @@ plot_nowcast_from_case_reports(MRT,  maxy = 10^7)
 ```
 
 ### Mauritius
+```{r MYT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(MYT,  maxy = 10^7)
+```
+
+### Mayotte
 ```{r MUS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MUS,  maxy = 10^7)
 ```
@@ -909,6 +1058,11 @@ plot_nowcast_from_case_reports(MCO,  maxy = 10^7)
 ```
 
 ### Mongolia
+```{r MSR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(MSR,  maxy = 10^7)
+```
+
+### Montserrat
 ```{r MNG, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(MNG,  maxy = 10^7)
 ```
@@ -936,6 +1090,16 @@ plot_nowcast_from_case_reports(NAM,  maxy = 10^7)
 ### Nepal
 ```{r NPL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(NPL,  maxy = 10^7)
+```
+
+### Netherlands
+```{r NLD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(NLD,  maxy = 10^7)
+```
+
+### New Caledonia"
+```{r NCL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(NCL,  maxy = 10^7)
 ```
 
 ### New Zealand
@@ -998,7 +1162,6 @@ plot_nowcast_from_case_reports(PRY,  maxy = 10^7)
 plot_nowcast_from_case_reports(PER,  maxy = 10^7)
 ```
 
-
 ### Philippines
 ```{r PHL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(PHL,  maxy = 10^7)
@@ -1019,6 +1182,11 @@ plot_nowcast_from_case_reports(PRT,  maxy = 10^7)
 plot_nowcast_from_case_reports(QAT,  maxy = 10^7)
 ```
 
+### Reunion
+```{r REU, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(REU,  maxy = 10^7)
+```
+
 ### Romania
 ```{r ROU, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(ROU,  maxy = 10^7)
@@ -1034,6 +1202,11 @@ plot_nowcast_from_case_reports(RUS,  maxy = 10^7)
 plot_nowcast_from_case_reports(RWA,  maxy = 10^7)
 ```
 
+### Saint Barthelemy
+```{r BLM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(BLM,  maxy = 10^7)
+```
+
 ### Saint Kitts and Nevis
 ```{r KNA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(KNA,  maxy = 10^7)
@@ -1042,6 +1215,11 @@ plot_nowcast_from_case_reports(KNA,  maxy = 10^7)
 ### Saint Lucia
 ```{r LCA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(LCA,  maxy = 10^7)
+```
+
+### Saint Pierre and Miquelon
+```{r SPM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(SPM,  maxy = 10^7)
 ```
 
 ### Saint Vincent and the Grenadines
@@ -1089,6 +1267,11 @@ plot_nowcast_from_case_reports(SLE,  maxy = 10^7)
 plot_nowcast_from_case_reports(SGP,  maxy = 10^7)
 ```
 
+### Sint Maarten"
+```{r SXM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(SXM,  maxy = 10^7)
+```
+
 ### Slovakia
 ```{r SVK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(SVK,  maxy = 10^7)
@@ -1122,6 +1305,11 @@ plot_nowcast_from_case_reports(ESP,  maxy = 10^7)
 ### Sri Lanka
 ```{r LKA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(LKA,  maxy = 10^7)
+```
+
+### St Martin
+```{r MAF, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(MAF,  maxy = 10^7)
 ```
 
 ### Sudan
@@ -1174,10 +1362,9 @@ plot_nowcast_from_case_reports(THA,  maxy = 10^7)
 plot_nowcast_from_case_reports(TLS,  maxy = 10^7)
 ```
 
-
 ### Togo
 ```{r TGO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(,  maxy = 10^7)
+plot_nowcast_from_case_reports(TGO,  maxy = 10^7)
 ```
 
 ### Trinidad and Tobago
@@ -1195,11 +1382,20 @@ plot_nowcast_from_case_reports(TUN,  maxy = 10^7)
 plot_nowcast_from_case_reports(TUR,  maxy = 10^7)
 ```
 
+### Turks and Caicos Islands
+```{r TCA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(TCA,  maxy = 10^7)
+```
+
 ### Uganda
 ```{r UGA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(UGA,  maxy = 10^7)
 ```
 
+### UK
+```{r UK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+plot_nowcast_from_case_reports(UK,  maxy = 10^7)
+```
 
 ### Ukraine
 ```{r UKR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
@@ -1251,7 +1447,6 @@ plot_nowcast_from_case_reports(ESH,  maxy = 10^7)
 plot_nowcast_from_case_reports(YEM,  maxy = 10^7)
 ```
 
-
 ### Zambia
 ```{r ZMB, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(ZMB,  maxy = 10^7)
@@ -1260,5 +1455,28 @@ plot_nowcast_from_case_reports(ZMB,  maxy = 10^7)
 ### Zimbabwe
 ```{r ZWE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
 plot_nowcast_from_case_reports(ZWE,  maxy = 10^7)
+
 ```
 
+## ![](nowcast-legend-combined.png)
+
+The nowcast for the each country is calculated from case reports at the national level. It is not the sum of the state/province level nowcasts. The nowcast for the whole wolrd does not necessarily agree with the the sum of country level nowcasts.
+
+### Parameters
+
+**Infection fatality rate** = `r params.Global$IFR`
+
+**Symptom-onset-to-reporting interval:**  
+Distribution: `r params.Global$effective.infectious.period$dist`  
+Mean = `r params.Global$effective.infectious.period$mean`  
+Shape = `r params.Global$effective.infectious.period$shape`
+
+**Incubation period:**  
+Distribution: `r params.Global$incubation.period$dist`  
+Mean = `r params.Global$incubation.period$mean`  
+Shape = `r params.Global$incubation.period$shape`
+
+**Symmptom-onset-to-death interval:**  
+Distribution: `r params.Global$onset.to.death.period$dist`  
+Mean = `r params.Global$onset.to.death.period$mean`  
+Shape = `r params.Global$onset.to.death.period$shape`  
