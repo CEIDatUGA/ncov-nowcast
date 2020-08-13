@@ -153,7 +153,7 @@ DC <- get_nowcast("DC", cases.US, fatalities.US, params.US)
 DE <- get_nowcast("DE", cases.US, fatalities.US, params.US)
 FL <- get_nowcast("FL", cases.US, fatalities.US, params.US)
 GA <- get_nowcast("GA", cases.US, fatalities.US, params.US)
-
+saveRDS(GA,"data/GA.nowcast.from.cases.rds")
 # Export single plot
 p <- plot_nowcast_from_case_reports(GA, plotcumulative = TRUE, maxy = 10^7, legend = FALSE)
 htmlwidgets::saveWidget(p, "GAnowcast_plot.html")
