@@ -437,13 +437,18 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
 ### START HERE
 # get R_effective
 # burnin <- get_sd(interval)*2
+# get_R_eff <- function(dates,E.onset.curve,I.state,gamma) {
+#   R_effective <- E.onset.curve/(I.state*gamma)
+# }
+
+
 # get_R_eff <- function(database, burnin = 0) {
 #   # dates <- range(dates)
-#   onset.curve <- linelist %>% 
-#     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
-#     count(onset.date) %>% 
+#   onset.curve <- linelist %>%
+#     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>%
+#     count(onset.date) %>%
 #     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
-#   
+# 
 #   interval$sd <- get_sd(interval)
 #   natail <- interval$mean+interval$sd*2
 #   if(!is.null(next_intervals)){
@@ -452,15 +457,15 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
 #       natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
 #     }
 #   }
-#   
+# 
 #   # NA replace
 #   onset.curve$n <- replace_na(onset.curve$n, 0)
-#   
+# 
 #   # set last several values to NA
 #   onset.curve$n <- tail_na(onset.curve$n,round(natail))
-#   
+# 
 #   onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
-#   
+# 
 #   onset.curve
 # }
 ### END HERE
