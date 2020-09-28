@@ -4,6 +4,7 @@ library(tibbletime)
 library(padr)
 library(tvReg)
 library(forecast)
+library(data.table)
 # source('R/package.R')
 # source('R/deconcolve.R')
 # source('R/simple_tdar.R')
@@ -334,8 +335,19 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
 
 ## Get value of state at a single "date" from "linelist"
 get_state <- function(date, linelist) {
+  linelist[onset.date <= date
+           & date < exit.date,] %>% nrow
+}
+
+get_state2 <- function(date, linelist) {
   linelist[linelist$onset.date <= date
            & date < linelist$exit.date,] %>% nrow
+}
+
+get_state_tab <- function(t, linelist) {
+  linelist[interval >= t, table(onset.date + t)] %>% 
+    data.table -> out
+  setnames(out, c('V1', 'N'), c('date', t))
 }
 
 ## Get state curve for range of dates from linelist
@@ -343,14 +355,13 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   # serial
   # values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
   
-  
   setDT(linelist)
   linelist[, onset.date := as.Date(lubridate::floor_date(linelist$onset.date))]
   setkey(linelist, onset.date)
-  
+
   linelist2 = linelist
   # -------------------------> I've saved debug-linelist.Rda to try this out
-  
+
   out <- rep(0, 137)
   system.time({
   for(t in 1:47) {
@@ -358,17 +369,27 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
     linelist2 <- linelist2[!(interval == t),]
   }
     })
-  
+
   linelist = tmp
   foreach(t in 1:46) %dopar% {
     # ........... need to register cluster and do some other stuff ............
     out <- linelist[t <= interval, table(onset.date + t)]
   }
+
+  system.time({
+  values <- mclapply(X = linelist[, unique(interval)],
+                     FUN = get_state2, linelist, mc.cores = 10)
+  })
+  tmp <- Reduce(function(...) merge(..., by = 'date', all = T), values)
+  rowSums(tmp[, -1], na.rm = T) -> out
+  names(out) <- tmp$date
+
   
   # parallel
-  system.time({
-  values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = detectCores()-1L) %>% unlist
-  })
+  # system.time({
+    #mc.cores = detectCores()-1L
+  values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = 10) %>% unlist
+  # })
   
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
