@@ -334,7 +334,7 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
 
 ## Get value of state at a single "date" from "linelist"
 get_state <- function(date, linelist) {
-  linelist[as.Date(lubridate::floor_date(linelist$onset.date)) <= date
+  linelist[linelist$onset.date <= date
            & date < linelist$exit.date,] %>% nrow
 }
 
@@ -343,8 +343,32 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   # serial
   # values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
   
+  
+  setDT(linelist)
+  linelist[, onset.date := as.Date(lubridate::floor_date(linelist$onset.date))]
+  setkey(linelist, onset.date)
+  
+  linelist2 = linelist
+  # -------------------------> I've saved debug-linelist.Rda to try this out
+  
+  out <- rep(0, 137)
+  system.time({
+  for(t in 1:47) {
+    out = out + unname(linelist2[, table(onset.date)])
+    linelist2 <- linelist2[!(interval == t),]
+  }
+    })
+  
+  linelist = tmp
+  foreach(t in 1:46) %dopar% {
+    # ........... need to register cluster and do some other stuff ............
+    out <- linelist[t <= interval, table(onset.date + t)]
+  }
+  
   # parallel
+  system.time({
   values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = detectCores()-1L) %>% unlist
+  })
   
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
