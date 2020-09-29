@@ -12,7 +12,7 @@ output:
 
 source('R/nowcast.R')
 source('R/data.R')
-
+start.time <- proc.time()
 ```
 
 <!-- Set params for US -->
@@ -58,7 +58,7 @@ cases.US <- readRDS('data/cases.US.rds')
 fatalities.US <- readRDS('data/fatalities.US.rds')
 
 # # Cutoff date # for debugging
-# lastdate <- '2020-04-15' 
+# lastdate <- '2020-04-15'
 # cases.US <- cases.US %>% filter(Date <= lastdate)
 # fatalities.US <- fatalities.US %>% filter(Date <= lastdate)
 
@@ -498,3 +498,14 @@ Shape = `r params.US$incubation.period$shape`
 Distribution: `r params.US$onset.to.death.period$dist`  
 Mean = `r params.US$onset.to.death.period$mean`  
 Shape = `r params.US$onset.to.death.period$shape`  
+
+```{r}
+elapsed <- round(as.numeric((proc.time() - start.time)[3]))
+sink("log.txt")
+cat(as.character(Sys.time()), 
+    "\nNowcast for US completed.\nElapsed time =",
+    as.character(lubridate::seconds_to_period(elapsed)))
+sink()
+
+```
+

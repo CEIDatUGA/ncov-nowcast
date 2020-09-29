@@ -9,6 +9,10 @@ library(forecast)
 # source('R/simple_tdar.R')
 # source('R/package_tv.R')
 
+# Cores
+ncores <- detectCores()-4L
+# ncores <- 5L
+
 # functions
 
 # fix list columns
@@ -222,7 +226,7 @@ backward_simulate_linelist <- function(dates, counts, interval) {
   # intervals <- lapply(input$count, get_intervals, interval) %>% unlist()
 
   # parallel
-  intervals <- mclapply(input$count, get_intervals, interval, mc.cores = detectCores()-1L) %>% unlist()
+  intervals <- mclapply(input$count, get_intervals, interval, mc.cores = ncores) %>% unlist()
   
   linelist <- input %>% 
     uncount(count) %>% 
@@ -344,7 +348,7 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   # values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
   
   # parallel
-  values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = detectCores()-1L) %>% unlist
+  values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = ncores) %>% unlist
   
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
