@@ -58,6 +58,13 @@ na_not_finite <- function(x){
   return(x)
 }
 
+# simpler version of floor_date
+floor_date <- function(x) {
+  as.Date(trunc(as.numeric(x)), origin = "1970-01-01")
+  # as.Date(lubridate::floor_date(x))
+}
+
+
 # get sd of distribution
 
 get_sd <- function(...){
@@ -285,7 +292,7 @@ backward_propagate_linelist <- function (linelist, interval) {
 get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
   # dates <- range(dates)
   onset.curve <- linelist %>% 
-    mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
+    mutate(onset.date = floor_date(onset.date)) %>% 
     count(onset.date) %>% 
     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
   
@@ -339,58 +346,18 @@ get_state <- function(date, linelist) {
            & date < exit.date,] %>% nrow
 }
 
-get_state2 <- function(date, linelist) {
-  linelist[linelist$onset.date <= date
-           & date < linelist$exit.date,] %>% nrow
-}
-
-get_state_tab <- function(t, linelist) {
-  linelist[interval >= t, table(onset.date + t)] %>% 
-    data.table -> out
-  setnames(out, c('V1', 'N'), c('date', t))
-}
-
 ## Get state curve for range of dates from linelist
 get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   # serial
   # values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
   
   setDT(linelist)
-  linelist[, onset.date := as.Date(lubridate::floor_date(linelist$onset.date))]
-  setkey(linelist, onset.date)
-
-  linelist2 = linelist
-  # -------------------------> I've saved debug-linelist.Rda to try this out
-
-  out <- rep(0, 137)
-  system.time({
-  for(t in 1:47) {
-    out = out + unname(linelist2[, table(onset.date)])
-    linelist2 <- linelist2[!(interval == t),]
-  }
-    })
-
-  linelist = tmp
-  foreach(t in 1:46) %dopar% {
-    # ........... need to register cluster and do some other stuff ............
-    out <- linelist[t <= interval, table(onset.date + t)]
-  }
-
-  system.time({
-  values <- mclapply(X = linelist[, unique(interval)],
-                     FUN = get_state2, linelist, mc.cores = 10)
-  })
-  tmp <- Reduce(function(...) merge(..., by = 'date', all = T), values)
-  rowSums(tmp[, -1], na.rm = T) -> out
-  names(out) <- tmp$date
-
+  # linelist[, onset.date := as.Date(lubridate::floor_date(linelist$onset.date))]
+  linelist[, onset.date := floor_date(onset.date)]
   
   # parallel
-  # system.time({
-    #mc.cores = detectCores()-1L
-  values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = 10) %>% unlist
-  # })
-  
+  values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = detectCores()-1L) %>% unlist
+
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
   # }else{
