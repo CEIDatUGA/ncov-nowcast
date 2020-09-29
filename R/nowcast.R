@@ -4,6 +4,7 @@ library(tibbletime)
 library(padr)
 library(tvReg)
 library(forecast)
+library(data.table)
 # source('R/package.R')
 # source('R/deconcolve.R')
 # source('R/simple_tdar.R')
@@ -56,6 +57,13 @@ na_not_finite <- function(x){
   x[!is.finite(x)] <- NA
   return(x)
 }
+
+# simpler version of floor_date
+floor_date <- function(x) {
+  as.Date(trunc(as.numeric(x)), origin = "1970-01-01")
+  # as.Date(lubridate::floor_date(x))
+}
+
 
 # get sd of distribution
 
@@ -284,7 +292,7 @@ backward_propagate_linelist <- function (linelist, interval) {
 get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
   # dates <- range(dates)
   onset.curve <- linelist %>% 
-    mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
+    mutate(onset.date = floor_date(onset.date)) %>% 
     count(onset.date) %>% 
     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
   
@@ -334,8 +342,8 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
 
 ## Get value of state at a single "date" from "linelist"
 get_state <- function(date, linelist) {
-  linelist[as.Date(lubridate::floor_date(linelist$onset.date)) <= date
-           & date < linelist$exit.date,] %>% nrow
+  linelist[onset.date <= date
+           & date < exit.date,] %>% nrow
 }
 
 ## Get state curve for range of dates from linelist
@@ -343,9 +351,13 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   # serial
   # values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
   
+  setDT(linelist)
+  # linelist[, onset.date := as.Date(lubridate::floor_date(linelist$onset.date))]
+  linelist[, onset.date := floor_date(onset.date)]
+  
   # parallel
   values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = detectCores()-1L) %>% unlist
-  
+
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
   # }else{
