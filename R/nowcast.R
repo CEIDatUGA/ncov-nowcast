@@ -343,7 +343,7 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
 ## Get value of state at a single "date" from "linelist"
 get_state <- function(date, linelist) {
   linelist[onset.date <= date
-           & date < exit.date,] %>% nrow
+           & date < exit.date, .N]
 }
 
 ## Get state curve for range of dates from linelist
