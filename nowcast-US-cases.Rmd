@@ -98,11 +98,13 @@ saveRDS(params.US,"data/params.US.rds")
 params.US <- readRDS("data/params.US.rds")
 
 get_nowcast <- function(admin, cases, fatalities, params, samplesize) {
+  cat(as.character(Sys.time()), "Starting nowcast for", admin, "\n") # for debugging
   nowcast <- cases %>% select(Date, cases = admin) %>% 
     tbl_time(index = Date) %>% nowcast_from_case_reports(params)
   
   nowcast$deaths <- pull(fatalities, admin)
   nowcast$cum.deaths <- cumsum(nowcast$deaths)
+  cat(as.character(Sys.time()), "Finished nowcast for", admin, "\n") # for debugging
   return(nowcast)
 }
 
