@@ -74,7 +74,7 @@ fatalities.US.all <- fatalities.US %>% dplyr::select(Date, deaths = US)
 
 # calculate and load ascertainment (time varying q with upper and lower bounds)
 
-params.US$q <- get_ascertainment(cases.US.all, fatalities.US.all, params.US, window = 7)
+params.US$q <- get_ascertainment(cases.US.all, fatalities.US.all, params.US, window = 7, samplesize = 0.1)
 saveRDS(params.US,"data/params.US.rds")
 
 # ## alternate contant q
@@ -97,7 +97,7 @@ saveRDS(params.US,"data/params.US.rds")
 
 params.US <- readRDS("data/params.US.rds")
 
-get_nowcast <- function(admin, cases, fatalities, params) {
+get_nowcast <- function(admin, cases, fatalities, params, samplesize) {
   nowcast <- cases %>% select(Date, cases = admin) %>% 
     tbl_time(index = Date) %>% nowcast_from_case_reports(params)
   
@@ -107,7 +107,7 @@ get_nowcast <- function(admin, cases, fatalities, params) {
 }
 
 # start.time <- proc.time()
-US <- get_nowcast(admin = "US", cases = cases.US, fatalities = fatalities.US, params.US)
+US <- get_nowcast(admin = "US", cases = cases.US, fatalities = fatalities.US, params.US, samplesize = 0.1)
 saveRDS(US,"data/US.nowcast.from.cases.rds")
 # (proc.time()-start.time)['elapsed']/60
 

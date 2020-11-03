@@ -477,7 +477,11 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
 
 # nowcast from case reports
 
-nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, minimal=FALSE) {
+nowcast_from_case_reports <- function(casereports, params, 
+                                      tvar.bandwidth=NULL, 
+                                      minimal=FALSE,
+                                      samplesize=1.0 # proportion of cases to use in generating linelist
+                                      ) {
   database <- casereports
   
   # Ascertainment
@@ -522,9 +526,13 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   # }
   # 
   
-  # I linelist
+  
+  sample <- database$cases_over_q * samplesize
+  
+  
+  # I linelist for sample of cases
   I.linelist <- backward_simulate_linelist(dates = database$Date,
-                                           counts = database$cases_over_q,
+                                           counts = sample,
                                            interval = params$effective.infectious.period)
   
   # Not using upper and lower estimates of q
@@ -562,7 +570,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   I <- get_state_curve(dates = database$Date,
                          linelist = I.linelist,
                          interval = params$effective.infectious.period)
-  database$I <- I$value
+  database$I <- I$value / samplesize
 
   # Not using upper and lower estimates of q
   # # I.upper
@@ -585,7 +593,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   #   database$I.lower <-  database$I
   # }
   
-  # E linelist
+  # E linelist for sample of cases
   E.linelist <- backward_propagate_linelist(I.linelist,
                                             interval = params$incubation.period)
   
@@ -606,7 +614,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
                                linelist = E.linelist,
                                interval = params$incubation.period,
                                next_intervals = list(params$effective.infectious.period))
-    database$E.onset <- E.onset$value
+    database$E.onset <- E.onset$value / samplesize
   }
   
   # # E (detected)
@@ -625,7 +633,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
                        linelist = E.linelist,
                        interval = params$incubation.period,
                        next_intervals = list(params$effective.infectious.period))
-  database$E <- E$value
+  database$E <- E$value / samplesize
   
   # Not using upper and lower estimates of q
   # # E.upper
@@ -887,10 +895,10 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports, params, tvar.b
 
 # calculate ascertainment
 
-get_ascertainment <- function(cases, deaths, params, window = 7) {
+get_ascertainment <- function(cases, deaths, params, window = 7, samplesize = 1.0) {
   params$q <- 1
   
-  nowcast_from_cases <- nowcast_from_case_reports(cases, params, minimal=TRUE)
+  nowcast_from_cases <- nowcast_from_case_reports(cases, params, minimal=TRUE, samplesize = samplesize)
   nowcast_from_deaths <- nowcast_from_deaths_with_onset_to_death(deaths, params)
   
   maxspan <- max(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
