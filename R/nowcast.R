@@ -448,13 +448,18 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
 ### START HERE
 # get R_effective
 # burnin <- get_sd(interval)*2
+# get_R_eff <- function(dates,E.onset.curve,I.state,gamma) {
+#   R_effective <- E.onset.curve/(I.state*gamma)
+# }
+
+
 # get_R_eff <- function(database, burnin = 0) {
 #   # dates <- range(dates)
-#   onset.curve <- linelist %>% 
-#     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
-#     count(onset.date) %>% 
+#   onset.curve <- linelist %>%
+#     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>%
+#     count(onset.date) %>%
 #     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
-#   
+# 
 #   interval$sd <- get_sd(interval)
 #   natail <- interval$mean+interval$sd*2
 #   if(!is.null(next_intervals)){
@@ -463,15 +468,15 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
 #       natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
 #     }
 #   }
-#   
+# 
 #   # NA replace
 #   onset.curve$n <- replace_na(onset.curve$n, 0)
-#   
+# 
 #   # set last several values to NA
 #   onset.curve$n <- tail_na(onset.curve$n,round(natail))
-#   
+# 
 #   onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
-#   
+# 
 #   onset.curve
 # }
 ### END HERE
@@ -479,7 +484,11 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
 
 # nowcast from case reports
 
-nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, minimal=FALSE) {
+nowcast_from_case_reports <- function(casereports, params, 
+                                      tvar.bandwidth=NULL, 
+                                      minimal=FALSE,
+                                      samplesize=1.0 # proportion of cases to use in generating linelist
+                                      ) {
   database <- casereports
   
   # Ascertainment
@@ -526,8 +535,12 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   
   # I linelist
   cat("Simulating I linelist...\n") # for debugging
+
+  sample <- database$cases_over_q * samplesize
+  
+  # I linelist for sample of cases
   I.linelist <- backward_simulate_linelist(dates = database$Date,
-                                           counts = database$cases_over_q,
+                                           counts = sample,
                                            interval = params$effective.infectious.period)
   cat("Done simulating I linelist.\n")  # for debugging
   print(head(I.linelist)) # for debugging
@@ -573,7 +586,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   print(tail(I)) # for debugging
   cat("I curve date range:", range(I$date), "\n")
   cat("I curve nrows:", nrow(I), "\n")
-  database$I <- I$value
+  database$I <- I$value / samplesize
 
   # Not using upper and lower estimates of q
   # # I.upper
@@ -596,7 +609,7 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   #   database$I.lower <-  database$I
   # }
   
-  # E linelist
+  # E linelist for sample of cases
   cat("Back propagating linelist to Exposures...\n") # for debugging
   E.linelist <- backward_propagate_linelist(I.linelist,
                                             interval = params$incubation.period)
@@ -622,7 +635,8 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
                                linelist = E.linelist,
                                interval = params$incubation.period,
                                next_intervals = list(params$effective.infectious.period))
-    database$E.onset <- E.onset$value
+
+    database$E.onset <- E.onset$value / samplesize
     cat("Done getting Exposure onset curve. \n")
     print(head(E.onset)) # for debugging
     print(tail(E.onset)) # for debugging
@@ -647,7 +661,8 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
                        linelist = E.linelist,
                        interval = params$incubation.period,
                        next_intervals = list(params$effective.infectious.period))
-  database$E <- E$value
+
+  database$E <- E$value / samplesize
   cat("Done getting Exposure state curve. \n")
   print(head(E)) # for debugging
   print(tail(E)) # for debugging
@@ -919,10 +934,10 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports, params, tvar.b
 
 # calculate ascertainment
 
-get_ascertainment <- function(cases, deaths, params, window = 7) {
+get_ascertainment <- function(cases, deaths, params, window = 7, samplesize = 1.0) {
   params$q <- 1
   
-  nowcast_from_cases <- nowcast_from_case_reports(cases, params, minimal=TRUE)
+  nowcast_from_cases <- nowcast_from_case_reports(cases, params, minimal=TRUE, samplesize = samplesize)
   nowcast_from_deaths <- nowcast_from_deaths_with_onset_to_death(deaths, params)
   
   maxspan <- max(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
