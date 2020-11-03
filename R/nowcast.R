@@ -291,6 +291,7 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
     count(onset.date) %>% 
     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
+  cat("onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
   
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
@@ -324,12 +325,15 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
       natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
     }
   }
+  cat("After next intervals, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
   
   # NA replace
   onset.curve$n <- replace_na(onset.curve$n, 0)
+  cat("After na replace, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
   
   # set last several values to NA
   onset.curve$n <- tail_na(onset.curve$n,round(natail))
+  cat("After tail_na, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
   
   onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
 
@@ -339,7 +343,7 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
 ## Get value of state at a single "date" from "linelist"
 get_state <- function(date, linelist) {
   linelist[as.Date(lubridate::floor_date(linelist$onset.date)) <= date
-           & date < linelist$exit.date,] %>% nrow
+           & date < linelist$exit.date,] %>% nrow()
 }
 
 ## Get state curve for range of dates from linelist
@@ -349,6 +353,8 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   
   # parallel
   values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = ncores) %>% unlist
+  browser() # for dubugging
+  cat("n values = ", length(values), "\n")  # for debugging
   
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
@@ -384,9 +390,10 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   
   # NA replace
   values <- values %>% replace_na(0)
-  
+
   # set last several values to NA
   values <- tail_na(values, round(natail))
+  cat("after na_tail, n values = ", length(values), "\n")  # for debugging
   
   state.curve <- tibble(
     date = dates, 
@@ -518,10 +525,13 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   # 
   
   # I linelist
+  cat("Simulating I linelist...\n") # for debugging
   I.linelist <- backward_simulate_linelist(dates = database$Date,
                                            counts = database$cases_over_q,
                                            interval = params$effective.infectious.period)
-  
+  cat("Done simulating I linelist.\n")  # for debugging
+  print(head(I.linelist)) # for debugging
+  print(tail(I.linelist)) # for debugging
   # Not using upper and lower estimates of q
   # if(is.list(params$q)) {
   #   # I linelist.upper
@@ -554,9 +564,15 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   #                                 I.lower = I_d/q.upper)
   
   # I
+  cat("Getting state curve for I...\n") # for debugging
   I <- get_state_curve(dates = database$Date,
                          linelist = I.linelist,
                          interval = params$effective.infectious.period)
+  cat("Done getting state curve for I.\n")  # for debugging
+  print(head(I)) # for debugging
+  print(tail(I)) # for debugging
+  cat("I curve date range:", range(I$date), "\n")
+  cat("I curve nrows:", nrow(I), "\n")
   database$I <- I$value
 
   # Not using upper and lower estimates of q
@@ -581,8 +597,12 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   # }
   
   # E linelist
+  cat("Back propagating linelist to Exposures...\n") # for debugging
   E.linelist <- backward_propagate_linelist(I.linelist,
                                             interval = params$incubation.period)
+  cat("Done back propagating linelist.\n")  # for debugging
+  print(head(E.linelist)) # for debugging
+  print(tail(E.linelist)) # for debugging
   
   # Not using upper and lower estimates of q
   # if(is.list(params$q)){
@@ -597,11 +617,17 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   
   # E onset
   if(minimal == FALSE){
+    cat("Getting Exposure onset curve... \n")
     E.onset <- get_onset_curve(dates = database$Date,
                                linelist = E.linelist,
                                interval = params$incubation.period,
                                next_intervals = list(params$effective.infectious.period))
     database$E.onset <- E.onset$value
+    cat("Done getting Exposure onset curve. \n")
+    print(head(E.onset)) # for debugging
+    print(tail(E.onset)) # for debugging
+    cat("E onset curve date range:", range(E.onset$date), "\n")
+    cat("E onset curve nrows:", nrow(E.onset), "\n")
   }
   
   # # E (detected)
@@ -616,12 +642,18 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   #                                 E.lower = E_d/q.upper)
   
   # E
+  cat("Getting Exposure state curve... \n")
   E <- get_state_curve(dates = database$Date,
                        linelist = E.linelist,
                        interval = params$incubation.period,
                        next_intervals = list(params$effective.infectious.period))
   database$E <- E$value
-  
+  cat("Done getting Exposure state curve. \n")
+  print(head(E)) # for debugging
+  print(tail(E)) # for debugging
+  cat("E state curve date range:", range(E$date), "\n")
+  cat("E state curve nrows:", nrow(E), "\n")
+
   # Not using upper and lower estimates of q
   # # E.upper
   # if(is.list(params$q)){
@@ -646,11 +678,13 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   # }
   
   # forecasting I
+  cat("Forecasting I state curve... \n")
   I.forecast <- tvar_forecast_to_present(database$I, bw=tvar.bandwidth)
   database$I.fit <- I.forecast$fit
   database$I.forecast.mean <- I.forecast$mean
   database$I.forecast.upper80 <- I.forecast$upper80
   database$I.forecast.lower80 <- I.forecast$lower80
+  cat("Done forecasting I state curve. \n")
   
   # Not using upper and lower estimates of q
   # if(is.list(params$q)){
@@ -674,13 +708,14 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
   #   database$I.lower.forecast.upper80 <- database$I.forecast.upper80 
   # }
   
-  
   # forecasting E
+  cat("Forecasting E state curve... \n")
   E.forecast <- tvar_forecast_to_present(database$E, bw=tvar.bandwidth)
   database$E.fit <- E.forecast$fit
   database$E.forecast.mean <- E.forecast$mean
   database$E.forecast.upper80 <- E.forecast$upper80
   database$E.forecast.lower80 <- E.forecast$lower80
+  cat("Done forecasting E state curve... \n")
   
   # Not using upper and lower estimates of q
   # if(is.list(params$q)){
@@ -706,11 +741,13 @@ nowcast_from_case_reports <- function(casereports, params, tvar.bandwidth=NULL, 
 
   # forecasting E.onset
   if(minimal == FALSE){
+    cat("Forecasting E onset curve... \n")
     E.onset.forecast <- tvar_forecast_to_present(database$E.onset, bw=tvar.bandwidth)
     database$E.onset.fit <- E.onset.forecast$fit
     database$E.onset.forecast.mean <- E.onset.forecast$mean
     database$E.onset.forecast.upper80 <- E.onset.forecast$upper80
     database$E.onset.forecast.lower80 <- E.onset.forecast$lower80
+    cat("Done forecasting E onset curve... \n")
   }
   
   # nowcast
