@@ -14,7 +14,7 @@ knitr::opts_chunk$set(
   echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'
 )
 
-# source('R/run_nowcast_US.R') # replace with sourcing in crontab
+source('R/run_nowcast_US.R') # replace with sourcing in crontab
 
 library(tidyverse)
 source('R/nowcast.R')
