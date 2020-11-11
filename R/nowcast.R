@@ -291,7 +291,7 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
     count(onset.date) %>% 
     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
-  cat("onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
+  # cat("onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
   
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
@@ -325,15 +325,15 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
       natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
     }
   }
-  cat("After next intervals, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
+  # cat("After next intervals, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
   
   # NA replace
   onset.curve$n <- replace_na(onset.curve$n, 0)
-  cat("After na replace, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
+  # cat("After na replace, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
   
   # set last several values to NA
   onset.curve$n <- tail_na(onset.curve$n,round(natail))
-  cat("After tail_na, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
+  # cat("After tail_na, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
   
   onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
 
@@ -353,8 +353,8 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   
   # parallel
   values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = ncores) %>% unlist
-  browser() # for dubugging
-  cat("n values = ", length(values), "\n")  # for debugging
+  # browser() # for dubugging
+  # cat("n values = ", length(values), "\n")  # for debugging
   
   # if(is.numeric(interval)){
   #   interval <- list(mean=interval[1], sd=0)
@@ -393,7 +393,7 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
 
   # set last several values to NA
   values <- tail_na(values, round(natail))
-  cat("after na_tail, n values = ", length(values), "\n")  # for debugging
+  # cat("after na_tail, n values = ", length(values), "\n")  # for debugging
   
   state.curve <- tibble(
     date = dates, 
@@ -543,8 +543,8 @@ nowcast_from_case_reports <- function(casereports, params,
                                            counts = sample,
                                            interval = params$effective.infectious.period)
   cat("Done simulating I linelist.\n")  # for debugging
-  print(head(I.linelist)) # for debugging
-  print(tail(I.linelist)) # for debugging
+  # print(head(I.linelist)) # for debugging
+  # print(tail(I.linelist)) # for debugging
   # Not using upper and lower estimates of q
   # if(is.list(params$q)) {
   #   # I linelist.upper
@@ -582,10 +582,10 @@ nowcast_from_case_reports <- function(casereports, params,
                          linelist = I.linelist,
                          interval = params$effective.infectious.period)
   cat("Done getting state curve for I.\n")  # for debugging
-  print(head(I)) # for debugging
-  print(tail(I)) # for debugging
-  cat("I curve date range:", range(I$date), "\n")
-  cat("I curve nrows:", nrow(I), "\n")
+  # print(head(I)) # for debugging
+  # print(tail(I)) # for debugging
+  # cat("I curve date range:", range(I$date), "\n") # for debugging
+  # cat("I curve nrows:", nrow(I), "\n") # for debugging
   database$I <- I$value / samplesize
 
   # Not using upper and lower estimates of q
@@ -614,8 +614,8 @@ nowcast_from_case_reports <- function(casereports, params,
   E.linelist <- backward_propagate_linelist(I.linelist,
                                             interval = params$incubation.period)
   cat("Done back propagating linelist.\n")  # for debugging
-  print(head(E.linelist)) # for debugging
-  print(tail(E.linelist)) # for debugging
+  # print(head(E.linelist)) # for debugging
+  # print(tail(E.linelist)) # for debugging
   
   # Not using upper and lower estimates of q
   # if(is.list(params$q)){
@@ -638,10 +638,10 @@ nowcast_from_case_reports <- function(casereports, params,
 
     database$E.onset <- E.onset$value / samplesize
     cat("Done getting Exposure onset curve. \n")
-    print(head(E.onset)) # for debugging
-    print(tail(E.onset)) # for debugging
-    cat("E onset curve date range:", range(E.onset$date), "\n")
-    cat("E onset curve nrows:", nrow(E.onset), "\n")
+    # print(head(E.onset)) # for debugging
+    # print(tail(E.onset)) # for debugging
+    # cat("E onset curve date range:", range(E.onset$date), "\n")  # for debugging
+    # cat("E onset curve nrows:", nrow(E.onset), "\n")  # for debugging
   }
   
   # # E (detected)
@@ -664,10 +664,10 @@ nowcast_from_case_reports <- function(casereports, params,
 
   database$E <- E$value / samplesize
   cat("Done getting Exposure state curve. \n")
-  print(head(E)) # for debugging
-  print(tail(E)) # for debugging
-  cat("E state curve date range:", range(E$date), "\n")
-  cat("E state curve nrows:", nrow(E), "\n")
+  # print(head(E)) # for debugging
+  # print(tail(E)) # for debugging
+  # cat("E state curve date range:", range(E$date), "\n")
+  # cat("E state curve nrows:", nrow(E), "\n")
 
   # Not using upper and lower estimates of q
   # # E.upper

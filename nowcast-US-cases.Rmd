@@ -10,471 +10,323 @@ output:
 
 ```{r setup, include=FALSE}
 
-source('R/nowcast.R')
-source('R/data.R')
-start.time <- proc.time()
-```
-
-<!-- Set params for US -->
-```{r params, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-params.US <- list(
-  admin = "US", # state or country
-  
-  # https://www.imperial.ac.uk/media/imperial-college/medicine/sph/ide/gida-fellowships/Imperial-College-COVID19-NPI-modelling-16-03-2020.pdf
-  IFR = .009, 
-  
-  # ascertainment (calculated and added later)
-  # q = 1,
-
-  # accepted value
-  infectious.period = list(dist="exponential", mean=7),   
-  
-  # our analysis onset-to-reporting
-  effective.infectious.period = list(dist="gamma", mean=5.95, shape=2.2788163), 
-  
-  # our analysis of US data
-  incubation.period = list(dist="gamma", mean=5.89, shape=2.4265511), 
-  
-  # Our analysis of US data (not used)
-  # report.to.death.period = list(dist="skewnormal", mean = 1.33, sd = sqrt(11.06),
-  #                               location = -2.388990, # xi
-  #                               scale = 4.322, # omega
-  #                               shape = 1.447), # alpha
-  # 
-  # from China data: lognormal distribution with location 2.84, scale 0.52 
-  # (Jung et al.) https://doi.org/10.3390/jcm9020523 
-  # onset.to.death.period = list(dist="lognormal", mean = 19.9, sd = 11.4)
-  
-  # from China data: Kenji Mizumoto, Gerardo Chowell. "Estimating the risk of 2019 Novel Coronavirus death during the course of the outbreak in China, 2020" medRxiv preprint. https://doi.org/10.1101/2020.02.19.20025163
-  onset.to.death.period = list(dist="gamma", mean = 16, shape = 4)
+knitr::opts_chunk$set(
+  echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'
 )
 
-```
+# source('R/run_nowcast_US.R') # replace with sourcing in crontab
 
-<!-- Get reports for US states -->
-```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
+library(tidyverse)
+source('R/nowcast.R')
+#source('R/data.R')
+
+params.US <- readRDS("data/params.US.rds")
+
+load_nowcast <- function(admin) {
+  readRDS(paste0("data/output/", admin, ".nowcast.from.cases.rds"))
+}
+
+US <- load_nowcast("US")
 
 cases.US <- readRDS('data/cases.US.rds')
-fatalities.US <- readRDS('data/fatalities.US.rds')
+statesvector <- cases.US %>% select(-Date, -US) %>% names()
 
-# # Cutoff date # for debugging
-# lastdate <- '2020-04-15'
-# cases.US <- cases.US %>% filter(Date <= lastdate)
-# fatalities.US <- fatalities.US %>% filter(Date <= lastdate)
+for(s in statesvector) {
+  assign(s, load_nowcast(s), envir = .GlobalEnv)
+}
 
-# Cutoff
-cases.US.all <- cases.US %>% dplyr::select(Date, cases = US)
-fatalities.US.all <- fatalities.US %>% dplyr::select(Date, deaths = US)
-
-```
-
-<!-- Get q (ascertainment) -->
-```{r ascertainment, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-
-
-# calculate and load ascertainment (time varying q with upper and lower bounds)
-
-params.US$q <- get_ascertainment(cases.US.all, fatalities.US.all, params.US, window = 7, samplesize = 0.1)
-saveRDS(params.US,"data/params.US.rds")
-
-# ## alternate contant q
-# 
-# params.US$q <- mean(params.US$q$mean.raw)
-# 
-# ## alternate q = grand mean
-# 
-# params.US$q <- list(mean = mean(params.US$q$mean.raw), 
-#                     upper = mean(params.US$q$upper.raw), 
-#                     lower = mean(params.US$q$lower.raw))
-
+# start.time <- proc.time()
 ```
 
 ## {.tabset .tabset-fade}
 
 ### USA
-<!-- calculate nowcasts for entire US  -->
-```{r nowcast_US, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 
-params.US <- readRDS("data/params.US.rds")
+```{r US}
 
-get_nowcast <- function(admin, cases, fatalities, params, samplesize) {
-  cat(as.character(Sys.time()), "Starting nowcast for", admin, "\n") # for debugging
-  nowcast <- cases %>% select(Date, cases = admin) %>% 
-    tbl_time(index = Date) %>% nowcast_from_case_reports(params)
-  
-  nowcast$deaths <- pull(fatalities, admin)
-  nowcast$cum.deaths <- cumsum(nowcast$deaths)
-  cat(as.character(Sys.time()), "Finished nowcast for", admin, "\n") # for debugging
-  return(nowcast)
-}
-
-# start.time <- proc.time()
-US <- get_nowcast(admin = "US", cases = cases.US, fatalities = fatalities.US, params.US, samplesize = 0.1)
-saveRDS(US,"data/US.nowcast.from.cases.rds")
-# (proc.time()-start.time)['elapsed']/60
+# Plot_R_effective(US, legend = FALSE)
 
 # Export single plot
 p <- plot_nowcast_from_case_reports(US, plotcumulative = TRUE, maxy = 10^8, legend = FALSE)
 htmlwidgets::saveWidget(p, "USnowcast_plot.html")
-```
 
-```{r US, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-US <- readRDS("data/US.nowcast.from.cases.rds")
-# Plot_R_effective(US, legend = FALSE)
+# plot inline
 plot_nowcast_from_case_reports(US, maxy = 10^8, legend = FALSE)
 ```
 
-<!-- ```{r uncorrected} -->
-
-<!-- params.US.uncorrected <- params.US -->
-<!-- params.US.uncorrected$q <- 1 -->
-
-<!-- US.all.uncorrected <- nowcast_from_case_reports(cases.US.all, params.US.uncorrected) -->
-
-<!-- plot_nowcast_from_case_reports(US.all.uncorrected) %>% layout(showlegend = TRUE) -->
-
-<!-- ``` -->
-
-
-<!-- calculate nowcasts for US states -->
-```{r nowcast_states, include=FALSE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
-# start.time <- proc.time()
-
-# cases.US <- readRDS('data/cases.US.rds')
-# fatalities.US <- readRDS('data/fatalities.US.rds')
-# params.US <- readRDS("data/params.US.rds")
-
-AK <- get_nowcast("AK", cases.US, fatalities.US, params.US)
-AL <- get_nowcast("AL", cases.US, fatalities.US, params.US)
-AR <- get_nowcast("AR", cases.US, fatalities.US, params.US)
-AZ <- get_nowcast("AZ", cases.US, fatalities.US, params.US)
-CA <- get_nowcast("CA", cases.US, fatalities.US, params.US)
-CO <- get_nowcast("CO", cases.US, fatalities.US, params.US)
-CT <- get_nowcast("CT", cases.US, fatalities.US, params.US)
-DC <- get_nowcast("DC", cases.US, fatalities.US, params.US)
-DE <- get_nowcast("DE", cases.US, fatalities.US, params.US)
-FL <- get_nowcast("FL", cases.US, fatalities.US, params.US)
-GA <- get_nowcast("GA", cases.US, fatalities.US, params.US)
-saveRDS(GA,"data/GA.nowcast.from.cases.rds")
-# Export single plot
-p <- plot_nowcast_from_case_reports(GA, plotcumulative = TRUE, maxy = 10^7, legend = FALSE)
-htmlwidgets::saveWidget(p, "GAnowcast_plot.html")
-
-HI <- get_nowcast("HI", cases.US, fatalities.US, params.US)
-IA <- get_nowcast("IA", cases.US, fatalities.US, params.US)
-ID <- get_nowcast("ID", cases.US, fatalities.US, params.US)
-IL <- get_nowcast("IL", cases.US, fatalities.US, params.US)
-IN <- get_nowcast("IN", cases.US, fatalities.US, params.US)
-KS <- get_nowcast("KS", cases.US, fatalities.US, params.US)
-KY <- get_nowcast("KY", cases.US, fatalities.US, params.US)
-LA <- get_nowcast("LA", cases.US, fatalities.US, params.US)
-MA <- get_nowcast("MA", cases.US, fatalities.US, params.US)
-MD <- get_nowcast("MD", cases.US, fatalities.US, params.US)
-ME <- get_nowcast("ME", cases.US, fatalities.US, params.US)
-MI <- get_nowcast("MI", cases.US, fatalities.US, params.US)
-MN <- get_nowcast("MN", cases.US, fatalities.US, params.US)
-MO <- get_nowcast("MO", cases.US, fatalities.US, params.US)
-MS <- get_nowcast("MS", cases.US, fatalities.US, params.US)
-MT <- get_nowcast("MT", cases.US, fatalities.US, params.US)
-NC <- get_nowcast("NC", cases.US, fatalities.US, params.US)
-ND <- get_nowcast("ND", cases.US, fatalities.US, params.US)
-NE <- get_nowcast("NE", cases.US, fatalities.US, params.US)
-NH <- get_nowcast("NH", cases.US, fatalities.US, params.US)
-NJ <- get_nowcast("NJ", cases.US, fatalities.US, params.US)
-NM <- get_nowcast("NM", cases.US, fatalities.US, params.US)
-NV <- get_nowcast("NV", cases.US, fatalities.US, params.US)
-NY <- get_nowcast("NY", cases.US, fatalities.US, params.US)
-OH <- get_nowcast("OH", cases.US, fatalities.US, params.US)
-OK <- get_nowcast("OK", cases.US, fatalities.US, params.US)
-OR <- get_nowcast("OR", cases.US, fatalities.US, params.US)
-PA <- get_nowcast("PA", cases.US, fatalities.US, params.US)
-RI <- get_nowcast("RI", cases.US, fatalities.US, params.US)
-SC <- get_nowcast("SC", cases.US, fatalities.US, params.US)
-SD <- get_nowcast("SD", cases.US, fatalities.US, params.US)
-TN <- get_nowcast("TN", cases.US, fatalities.US, params.US)
-TX <- get_nowcast("TX", cases.US, fatalities.US, params.US)
-UT <- get_nowcast("UT", cases.US, fatalities.US, params.US)
-VA <- get_nowcast("VA", cases.US, fatalities.US, params.US)
-VT <- get_nowcast("VT", cases.US, fatalities.US, params.US)
-WA <- get_nowcast("WA", cases.US, fatalities.US, params.US)
-WI <- get_nowcast("WI", cases.US, fatalities.US, params.US)
-WY <- get_nowcast("WY", cases.US, fatalities.US, params.US)
-GU <- get_nowcast("GU", cases.US, fatalities.US, params.US)
-MP <- get_nowcast("MP", cases.US, fatalities.US, params.US)
-PR <- get_nowcast("PR", cases.US, fatalities.US, params.US)
-VI <- get_nowcast("VI", cases.US, fatalities.US, params.US)
-# (proc.time()-start.time)['elapsed']/60
-```
-
 ### AK
-```{r AK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(AK,  maxy = 10^7)
+```{r AK}
+plot_nowcast_from_case_reports(AK, maxy = 10^7)
 ```
 
 ### AL
-```{r AL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
-plot_nowcast_from_case_reports(AL,  maxy = 10^7)
+```{r AL}
+plot_nowcast_from_case_reports(AL, maxy = 10^7)
 ```
 
 ### AR
-```{r AR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r AR}
 plot_nowcast_from_case_reports(AR,  maxy = 10^7)
 ```
 
 ### AZ
-```{r AZ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r AZ}
 plot_nowcast_from_case_reports(AZ,  maxy = 10^7)
 ```
 
 ### CA
-```{r CA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r CA}
 plot_nowcast_from_case_reports(CA,  maxy = 10^7)
 ```
 
 ### CO
-```{r CO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r CO}
 plot_nowcast_from_case_reports(CO,  maxy = 10^7)
 ```
 
 ### CT
-```{r CT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r CT}
 plot_nowcast_from_case_reports(CT,  maxy = 10^7)
 ```
 
 ### DC
-```{r DC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r DC}
 plot_nowcast_from_case_reports(DC,  maxy = 10^7)
 ```
 
 ### DE
-```{r DE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r DE}
 plot_nowcast_from_case_reports(DE,  maxy = 10^7)
 ```
 
 ### FL
-```{r FL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r FL}
 plot_nowcast_from_case_reports(FL,  maxy = 10^7)
 ```
 
 ### GA
-```{r GA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r GA}
 plot_nowcast_from_case_reports(GA,  maxy = 10^7)
+
+GA <- readRDS("data/output/GA.nowcast.from.cases.rds")
+# Export single plot
+p <- plot_nowcast_from_case_reports(GA, plotcumulative = TRUE, maxy = 10^7, legend = FALSE)
+htmlwidgets::saveWidget(p, "GAnowcast_plot.html")
+
 ```
 
 ### HI
-```{r HI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r HI}
 plot_nowcast_from_case_reports(HI,  maxy = 10^7)
 ```
 
 ### IA
-```{r IA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r IA}
 plot_nowcast_from_case_reports(IA,  maxy = 10^7)
 ```
 
 ### ID
-```{r ID, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r ID}
 plot_nowcast_from_case_reports(ID,  maxy = 10^7)
 ```
 
 ### IL
-```{r IL, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r IL}
 plot_nowcast_from_case_reports(IL,  maxy = 10^7)
 ```
 
 ### IN
-```{r IN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r IN}
 plot_nowcast_from_case_reports(IN,  maxy = 10^7)
 ```
 
 ### KS
-```{r KS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r KS}
 plot_nowcast_from_case_reports(KS,  maxy = 10^7)
 ```
 
 ### KY
-```{r KY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r KY}
 plot_nowcast_from_case_reports(KY,  maxy = 10^7)
 ```
 
 ### LA
-```{r LA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r LA}
 plot_nowcast_from_case_reports(LA,  maxy = 10^7)
 ```
 
 ### MA
-```{r MA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r MA}
 plot_nowcast_from_case_reports(MA,  maxy = 10^7)
 ```
 
 ### MD
-```{r MD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r MD}
 plot_nowcast_from_case_reports(MD,  maxy = 10^7)
 ```
 
 ### ME
-```{r ME, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r ME}
 plot_nowcast_from_case_reports(ME,  maxy = 10^7)
 ```
 
 ### MI
-```{r MI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r MI}
 plot_nowcast_from_case_reports(MI,  maxy = 10^7)
 ```
 
 ### MN
-```{r MN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r MN}
 plot_nowcast_from_case_reports(MN,  maxy = 10^7)
 ```
 
 ### MO
-```{r MO, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r MO}
 plot_nowcast_from_case_reports(MO,  maxy = 10^7)
 ```
 
 ### MS
-```{r MS, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r MS}
 plot_nowcast_from_case_reports(MS,  maxy = 10^7)
 ```
 
 ### MT
-```{r MT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r MT}
 plot_nowcast_from_case_reports(MT,  maxy = 10^7)
 ```
 
 ### NC
-```{r NC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r NC}
 plot_nowcast_from_case_reports(NC,  maxy = 10^7)
 ```
 
 ### ND
-```{r ND, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r ND}
 plot_nowcast_from_case_reports(ND,  maxy = 10^7)
 ```
 
 ### NE
-```{r NE, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r NE}
 plot_nowcast_from_case_reports(NE,  maxy = 10^7)
 ```
 
 ### NH
-```{r NH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r NH}
 plot_nowcast_from_case_reports(NH,  maxy = 10^7)
 ```
 
 ### NJ
-```{r NJ, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r NJ}
 plot_nowcast_from_case_reports(NJ,  maxy = 10^7)
 ```
 
 ### NM
-```{r NM, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r NM}
 plot_nowcast_from_case_reports(NM,  maxy = 10^7)
 ```
 
 ### NV
-```{r NV, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r NV}
 plot_nowcast_from_case_reports(NV,  maxy = 10^7)
 ```
 
 ### NY
-```{r NY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r NY}
 plot_nowcast_from_case_reports(NY,  maxy = 10^7)
 ```
 
 ### OH
-```{r OH, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r OH}
 plot_nowcast_from_case_reports(OH,  maxy = 10^7)
 ```
 
 ### OK
-```{r OK, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r OK}
 plot_nowcast_from_case_reports(OK,  maxy = 10^7)
 ```
 
 ### OR
-```{r OR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r OR}
 plot_nowcast_from_case_reports(OR,  maxy = 10^7)
 ```
 
 ### PA
-```{r PA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r PA}
 plot_nowcast_from_case_reports(PA,  maxy = 10^7)
 ```
 
 ### RI
-```{r RI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r RI}
 plot_nowcast_from_case_reports(RI,  maxy = 10^7)
 ```
 
 ### SC
-```{r SC, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r SC}
 plot_nowcast_from_case_reports(SC,  maxy = 10^7)
 ```
 
 ### SD
-```{r SD, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r SD}
 plot_nowcast_from_case_reports(SD,  maxy = 10^7)
 ```
 
 ### TN
-```{r TN, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r TN}
 plot_nowcast_from_case_reports(TN,  maxy = 10^7)
 ```
 
 ### TX
-```{r TX, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r TX}
 plot_nowcast_from_case_reports(TX,  maxy = 10^7)
 ```
 
 ### UT
-```{r UT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r UT}
 plot_nowcast_from_case_reports(UT,  maxy = 10^7)
 ```
 
 ### VA
-```{r VA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r VA}
 plot_nowcast_from_case_reports(VA,  maxy = 10^7)
 ```
 
 ### VT
-```{r VT, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r VT}
 plot_nowcast_from_case_reports(VT,  maxy = 10^7)
 ```
 
 ### WA
-```{r WA, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r WA}
 plot_nowcast_from_case_reports(WA,  maxy = 10^7)
 ```
 
 ### WI
-```{r WI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r WI}
 plot_nowcast_from_case_reports(WI,  maxy = 10^7)
 ```
 
 ### WY
-```{r WY, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r WY}
 plot_nowcast_from_case_reports(WY,  maxy = 10^7)
 ```
 
 ### Guam
-```{r GU, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r GU}
 plot_nowcast_from_case_reports(GU,  maxy = 10^7)
 ```
 
 ### Northern Mariana Islands
-```{r MP, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r MP}
 plot_nowcast_from_case_reports(MP)
 ```
 
 ### Puerto Rico
-```{r PR, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r PR}
 plot_nowcast_from_case_reports(PR,  maxy = 10^7)
 ```
 
-<!-- Nowcast for Puerto Rico temporarily offline. -->
-
 ### US Virgin Islands
-```{r VI, echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'}
+```{r VI}
 plot_nowcast_from_case_reports(VI,  maxy = 10^7)
 ```
 
@@ -500,15 +352,3 @@ Shape = `r params.US$incubation.period$shape`
 Distribution: `r params.US$onset.to.death.period$dist`  
 Mean = `r params.US$onset.to.death.period$mean`  
 Shape = `r params.US$onset.to.death.period$shape`  
-
-<!-- for debugging
-```{r}
-elapsed <- round(as.numeric((proc.time() - start.time)[3]))
-sink("log.txt")
-cat(as.character(Sys.time()), 
-    "\nNowcast for US completed.\nElapsed time =",
-    as.character(lubridate::seconds_to_period(elapsed)))
-sink()
-
-```
--->
