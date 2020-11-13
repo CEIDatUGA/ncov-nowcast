@@ -1003,22 +1003,15 @@ get_ascertainment <- function(cases, deaths, params, window = 7, samplesize = 1.
 
 # plot nowcast from case reports
 
-plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumulative = TRUE, maxy = 10^7, logy = TRUE, legend = FALSE) {
-  
-  col.cases <- 'rgba(0, 0, 0, .35)'
-  col.deaths <- 'rgba(0, 0, 0, 1.0)'
-  col.I <- 'rgba(230, 7, 7, .75)'
-  col.I.ci <- 'rgba(230, 7, 7, .15)'
-  col.E <- 'rgba(7, 164, 181, 0.75)'
-  col.E.ci <- 'rgba(7, 164, 181, 0.15)'
-  col.nowcast <- 'rgba(7, 7, 230, 0.75)'
-  col.nowcast.ci <- 'rgba(7, 7, 230, 0.15)'
-  col.invisible <- 'rgba(7, 7, 230, .01)'
-  
-  ci.lwd <- .5
-  mean.lwd <- 1
-  data.lwd <- 2
-  
+plot_nowcast_from_case_reports <- function(database, 
+                                           plotcases=TRUE, 
+                                           plotdeaths = TRUE, 
+                                           plotcumulative = TRUE, 
+                                           annotations = FALSE, 
+                                           maxy = 10^7, 
+                                           logy = TRUE, 
+                                           legend = FALSE) {
+
   serif <- function(x) {
     htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
   }
@@ -1032,36 +1025,26 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumu
                      font = list(family = "serif"))
   
   p_nowcast <- plotly::plot_ly(data = database, x = ~Date) %>% 
-    plotly::add_trace(y = ~cases, type = 'bar',
-                      name = 'New case notifications',
-                      marker = list(color = col.cases),
-                      legendgroup = 'group1',
+    plotly::add_trace(y = ~nowcast.mean, 
+                      name = 'Total unnotified cases', type = 'scatter', mode = 'lines',
+                      line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
+                      legendgroup = 'group4',
                       hoverinfo = "x+text",
                       hoverlabel = hoverlabel,
-                      text = ~paste(display(cases),serif("new case reports")) ) %>% 
-    plotly::add_trace(y = ~I, 
-                      name = 'Symptomatic cases', type = 'scatter', mode = 'lines',
-                      line = list(color = col.I, width = data.lwd),
-                      legendgroup = 'group2',
-                      hoverinfo = "x+text",
-                      hoverlabel = hoverlabel,
-                      text = ~paste(display(I),serif("symptomatic")) ) %>%
-    plotly::add_trace(y = ~I.forecast.mean, 
-                      name = '(forecast average)', type = 'scatter', mode = 'lines',
-                      line = list(color = col.I, width = mean.lwd, dash = 'dot'),
-                      legendgroup = 'group2',
-                      hoverinfo = "x+text",
-                      hoverlabel = hoverlabel,
-                      text = ~paste(display(I.forecast.mean),"symptomatic\n",
-                                    "(range:", display(I.forecast.lower80), "to",
-                                    display(I.forecast.upper80),")") ) %>% 
-    plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
+                      text = ~if_else(nowcast.mean==nowcast.upper,
+                                      paste(display(nowcast.mean),"total latent + symptomatic"),
+                                      paste(display(nowcast.mean),"total latent + symptomatic\n",
+                                            "(range:", display(nowcast.lower), "to",
+                                            display(nowcast.upper),")")
+                      )
+    ) %>% 
+    plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
                         name = '(prediction interval)', mode='lines',
-                        line = list(color = col.I, width = ci.lwd),
-                        fillcolor = col.I.ci,
-                        legendgroup = 'group2',
+                        line = list(color = col.nowcast, width = ci.lwd),
+                        fillcolor = col.nowcast.ci,
+                        legendgroup = 'group4',
                         hoverinfo='none') %>% 
-    
+  
     plotly::add_trace(y = ~E, 
                       name = 'Latent cases', type = 'scatter', mode = 'lines',
                       line = list(color = col.E, width = data.lwd),
@@ -1085,25 +1068,28 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumu
                         legendgroup = 'group3',
                         hoverinfo='none') %>% 
     
-    plotly::add_trace(y = ~nowcast.mean, 
-                      name = 'Total unnotified cases', type = 'scatter', mode = 'lines',
-                      line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
-                      legendgroup = 'group4',
+    plotly::add_trace(y = ~I, 
+                      name = 'Symptomatic cases', type = 'scatter', mode = 'lines',
+                      line = list(color = col.I, width = data.lwd),
+                      legendgroup = 'group2',
                       hoverinfo = "x+text",
                       hoverlabel = hoverlabel,
-                      text = ~if_else(nowcast.mean==nowcast.upper,
-                                      paste(display(nowcast.mean),"total latent + symptomatic"),
-                                      paste(display(nowcast.mean),"total latent + symptomatic\n",
-                                            "(range:", display(nowcast.lower), "to",
-                                            display(nowcast.upper),")")
-                                      )
-                      ) %>% 
-    plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
+                      text = ~paste(display(I),serif("symptomatic")) ) %>%
+    plotly::add_trace(y = ~I.forecast.mean, 
+                      name = '(forecast average)', type = 'scatter', mode = 'lines',
+                      line = list(color = col.I, width = mean.lwd, dash = 'dot'),
+                      legendgroup = 'group2',
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~paste(display(I.forecast.mean),"symptomatic\n",
+                                    "(range:", display(I.forecast.lower80), "to",
+                                    display(I.forecast.upper80),")") ) %>% 
+    plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
                         name = '(prediction interval)', mode='lines',
-                        line = list(color = col.nowcast, width = ci.lwd),
-                        fillcolor = col.nowcast.ci,
-                        legendgroup = 'group4',
-                        hoverinfo='none')
+                        line = list(color = col.I, width = ci.lwd),
+                        fillcolor = col.I.ci,
+                        legendgroup = 'group2',
+                        hoverinfo='none') 
   
     if(plotcumulative == TRUE){
       p_nowcast <- p_nowcast %>% 
@@ -1120,6 +1106,18 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumu
                                     )
                       )
     }
+  
+  if(plotcases == TRUE) {
+    p_nowcast <- p_nowcast %>% 
+      plotly::add_trace(y = ~cases, type = 'bar',
+                        name = 'New case notifications', 
+                        marker = list(color = col.cases),
+                        legendgroup = 'group1',
+                        hoverinfo = "x+text",
+                        hoverlabel = hoverlabel,
+                        text = ~paste(display(cases),serif("new case reports")) )
+  }
+  
   
   if(plotdeaths == TRUE) {
     p_nowcast <- p_nowcast %>% 
@@ -1142,7 +1140,7 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumu
   p_nowcast <- p_nowcast %>% 
     plotly::layout(yaxis = list(type = ifelse(logy==TRUE,"log","linear"),
                                 range = ifelse(logy==TRUE,c(-.25,log10(maxy)),c(0,maxy)),
-                                title = "Number",
+                                title = "Nowcast",
                                 spikethickness = 0),
                    xaxis = list(
                      spikethickness = 1,
@@ -1157,7 +1155,7 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumu
                    showlegend = legend,
                    title = paste("Nowcast for",statename)
                    )
-  if(plotcumulative == TRUE){
+  if(plotcumulative == TRUE & annotations == TRUE){
     p_nowcast <- p_nowcast %>% 
       plotly::layout(
         annotations = list(yref = 'paper', xref = 'paper',
@@ -1197,17 +1195,17 @@ plot_nowcast_from_case_reports <- function(database, plotdeaths = TRUE, plotcumu
 
 plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
   
-  col.cases <- 'rgba(0, 0, 0, .35)'
-  col.I <- 'rgba(230, 7, 7, .75)'
-  col.I.ci <- 'rgba(230, 7, 7, 0.15)'
-  col.E <- 'rgba(7, 164, 181, 0.75)'
-  col.E.ci <- 'rgba(7, 164, 181, .15)'
-  col.nowcast <- 'rgba(7, 7, 230, 0.75)'
-  col.nowcast.ci <- 'rgba(7, 7, 230, 0.15)'
-  
-  ci.lwd <- .5
-  mean.lwd <- 1
-  data.lwd <- 3
+  # col.cases <- 'rgba(0, 0, 0, .35)'
+  # col.I <- 'rgba(230, 7, 7, .75)'
+  # col.I.ci <- 'rgba(230, 7, 7, 0.15)'
+  # col.E <- 'rgba(7, 164, 181, 0.75)'
+  # col.E.ci <- 'rgba(7, 164, 181, .15)'
+  # col.nowcast <- 'rgba(7, 7, 230, 0.75)'
+  # col.nowcast.ci <- 'rgba(7, 7, 230, 0.15)'
+  # 
+  # ci.lwd <- .5
+  # mean.lwd <- 1
+  # data.lwd <- 3
   
   p_nowcast <- plotly::plot_ly(data = database, x = ~Date) %>% 
     plotly::add_trace(y = ~deaths, type = 'bar', 
@@ -1262,24 +1260,10 @@ plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
   p_nowcast_logy
 }
 
-plot_ascertainment <- function(ascertainment){
-  col.cases <- 'rgba(0, 0, 0, 1)'
-  col.I <- 'rgba(230, 7, 7, .75)'
-  col.I.ci <- 'rgba(230, 7, 7, .25)'
-  col.E <- 'rgba(7, 164, 181, 0.75)'
-  col.E.ci <- 'rgba(7, 164, 181, 0.0)'
-  col.nowcast <- 'rgba(7, 7, 230, 0.75)'
-  col.nowcast.ci <- 'rgba(7, 7, 230, 0.25)'
-  col.other = 'rgb(164, 0, 181, .75)'         
-  col.other.ci = 'rgb(164, 0, 181, .25)'
-  
-  ci.lwd <- .5
-  mean.lwd <- 1
-  data.lwd <- 2
-  
-  
+plot_ascertainment <- function(ascertainment, logy = TRUE){
+
   p_ascertainment <- plotly::plot_ly(data = ascertainment, x = ~Date , y = ~mean, type = 'scatter',
-                                     name = 'Ascertainment %', mode = 'lines',
+                                     name = 'Ascertainment', mode = 'lines',
                                      line = list(color = col.other, width = data.lwd)
   ) %>%
     plotly::add_trace(y = ~lower,
@@ -1288,26 +1272,14 @@ plot_ascertainment <- function(ascertainment){
     plotly::add_trace(y = ~upper,
                       name = 'lower 80% confidence', mode = 'lines',
                       line = list(color = col.other, width = ci.lwd)) %>%
-    plotly::layout(yaxis = list(type = "log",tickformat = ".2%",title="Ascertainment %"))
+    plotly::layout(yaxis = list(type = ifelse(logy==TRUE,"log","linear"),
+                                tickformat = ".2%",
+                                title="Ascertainment"))
   p_ascertainment
 }
 
+plot_R_effective <- function(database, legend=TRUE, maxy = 10) {
 
-plot_R_effective <- function(database, legend=TRUE) {
-  col.cases <- 'rgba(0, 0, 0, 1)'
-  col.I <- 'rgba(230, 7, 7, .75)'
-  col.I.ci <- 'rgba(230, 7, 7, .25)'
-  col.E <- 'rgba(7, 164, 181, 0.75)'
-  col.E.ci <- 'rgba(7, 164, 181, 0.0)'
-  col.nowcast <- 'rgba(7, 7, 230, 0.75)'
-  col.nowcast.ci <- 'rgba(7, 7, 230, 0.25)'
-  col.other = 'rgb(164, 0, 181, .75)'
-  col.other.ci = 'rgb(164, 0, 181, .25)'
-  
-  ci.lwd <- .5
-  mean.lwd <- 1
-  data.lwd <- 2
-  
   serif <- function(x) {
     htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
   }
@@ -1322,7 +1294,7 @@ plot_R_effective <- function(database, legend=TRUE) {
   
   p_Reff <- plotly::plot_ly(data = database, x = ~Date , y = ~R_eff.mean, type = 'scatter',
                                      name = 'R (mean)', mode = 'lines',
-                                     line = list(color = col.other, width = data.lwd),
+                                     line = list(color = col.R, width = data.lwd),
                             hoverinfo = "x+text",
                             hoverlabel = hoverlabel,
                             text = ~paste("mean R =", display(R_eff.mean),"\n",
@@ -1330,26 +1302,26 @@ plot_R_effective <- function(database, legend=TRUE) {
                                           display(R_eff.upper),")")) %>%
     plotly::add_trace(y = ~R_eff.upper,
                       name = 'upper 80% confidence', mode = 'lines',
-                      line = list(color = col.other, width = ci.lwd, dash = 'dot'),
+                      line = list(color = col.R, width = ci.lwd, dash = 'dot'),
                       hoverinfo = "none") %>%
     plotly::add_trace(y = ~R_eff.lower,
                       name = 'lower 80% confidence', mode = 'lines',
-                      line = list(color = col.other, width = ci.lwd),
+                      line = list(color = col.R, width = ci.lwd),
                       hoverinfo = "none") %>%
     plotly::layout(yaxis = list(# type = "log", 
                                 # tickformat = ".2%", 
-                                title="Effective Reproduction Number (R)")) %>% 
+                                title="R")) %>% 
     plotly::layout(shapes = list(list(type = "line", 
                                       line = list(color = "black", width=2, dash = "dot"), 
                                       xref = "x", yref = "y",
                                       x0 = ~min(Date), x1 = ~max(Date), 
                                       y0 = 1, y1 = 1)),
                    annotations = list(yref = 'y', xref = 'paper',
-                                      y = 1, x = .1, align = "left",
+                                      y = 1, x = .05, align = "left",
                                       text = "R = 1",
                                       showarrow = FALSE,
                                       xanchor = "left", yanchor = "bottom"),
-                   yaxis = list(range=c(0,40), spikethickness = 0),
+                   yaxis = list(range=c(0,maxy), spikethickness = 0),
                    xaxis = list(spikethickness = 1,
                                 spikedash = "dot",
                                 spikecolor = "black",
@@ -1368,20 +1340,187 @@ plot_R_effective <- function(database, legend=TRUE) {
   p_Reff
 }
   
+plot_cases <- function(database, maxy = max(database$cases), plottrend = TRUE, logy = TRUE, legend = FALSE) {
   
+  if(plottrend==TRUE){
+    database$cases.ravg <- movingAverage(database$cases, window=7,centered = FALSE)
+  }
+  
+  serif <- function(x) {
+    htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
+  }
+  
+  display <- function(x) {
+    format(round(x), big.mark=",", trim = TRUE)
+  }
+  
+  plotfont <- list(family = "serif")
+  hoverlabel <- list(namelength = -1,
+                     font = list(family = "serif"))
+  
+  p_cases <- plotly::plot_ly(data = database, x = ~Date) %>% 
+    plotly::add_trace(y = ~cases, type = 'bar',
+                      name = 'New case notifications',
+                      marker = list(color = col.cases),
+                      legendgroup = 'group_cases',
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~paste(display(cases),serif("new case reports")) )
 
+  p_cases <- p_cases %>% 
+    plotly::layout(yaxis = list(type = ifelse(logy==TRUE,"log","linear"),
+                                range = ifelse(logy==TRUE,c(-.25,log10(maxy)),c(0,maxy)),
+                                title = "Cases",
+                                spikethickness = 0),
+                   xaxis = list(
+                     spikethickness = 1,
+                     spikedash = "dot",
+                     spikecolor = "black",
+                     spikemode = "across+marker",
+                     spikesnap = "cursor"
+                   ),
+                   hovermode = 'x',
+                   hoverdistance = 1,
+                   # legend = list()
+                   showlegend = legend,
+                   title = ""
+    )
+  
+  if(plottrend == TRUE) {
+    p_cases <- p_cases %>% 
+      plotly::add_trace(y = ~cases.ravg, 
+                        name = '7 day moving average', type = 'scatter', mode = 'lines',
+                        line = list(color = col.cases, width = data.lwd, shape = 'hvh'),
+                        legendgroup = 'group_cases',
+                        hoverinfo = "x+text",
+                        hoverlabel = hoverlabel,
+                        text = ~paste(display(cases.ravg),serif("new cases (7 day average)")) )
+  }
+  
+  p_cases
+}
 
-# subplots <- list(p_Reff, p_nowcast_logy)
-# dash <- plotly::subplot(subplots, nrows = length(subplots), shareX = TRUE, titleY = TRUE) %>%
-#   plotly::layout(
-#     xaxis = list(
-#       spikethickness = 1,
-#       spikedash = "dot",
-#       spikecolor = "black",
-#       spikemode = "across+marker",
-#       spikesnap = "cursor"
-#     ),
-#     yaxis = list(spikethickness = 0)
-#   )
-# dash
+plot_deaths <- function(database, maxy = max(database$deaths), plottrend = TRUE, logy = TRUE, legend = FALSE) {
+  
+  if(plottrend==TRUE){
+    database$deaths.ravg <- movingAverage(database$deaths, window=7,centered = FALSE)
+  }
+  
+  # col.cases <- 'rgba(0, 0, 0, .35)'
+  # col.deaths <- 'rgba(64, 0, 0, .5)'
+  # col.I <- 'rgba(230, 7, 7, .75)'
+  # col.I.ci <- 'rgba(230, 7, 7, .15)'
+  # col.E <- 'rgba(7, 164, 181, 0.75)'
+  # col.E.ci <- 'rgba(7, 164, 181, 0.15)'
+  # col.nowcast <- 'rgba(7, 7, 230, 0.75)'
+  # col.nowcast.ci <- 'rgba(7, 7, 230, 0.15)'
+  # col.invisible <- 'rgba(7, 7, 230, .01)'
+  # 
+  # ci.lwd <- .5
+  # mean.lwd <- 1
+  # data.lwd <- 2
+  
+  serif <- function(x) {
+    htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
+  }
+  
+  display <- function(x) {
+    format(round(x), big.mark=",", trim = TRUE)
+  }
+  
+  plotfont <- list(family = "serif")
+  hoverlabel <- list(namelength = -1,
+                     font = list(family = "serif"))
+  
+  p_deaths <- plotly::plot_ly(data = database, x = ~Date) %>% 
+    plotly::add_trace(y = ~deaths, type = 'bar',
+                      name = 'New death notifications',
+                      marker = list(color = col.deaths),
+                      legendgroup = 'group_deaths',
+                      hoverinfo = "x+text",
+                      hoverlabel = hoverlabel,
+                      text = ~paste(display(deaths),serif("new death reports")) )
+  
+  p_deaths <- p_deaths %>% 
+    plotly::layout(yaxis = list(type = ifelse(logy==TRUE,"log","linear"),
+                                range = ifelse(logy==TRUE,c(-.25,log10(maxy)),c(0,maxy)),
+                                title = "Deaths",
+                                spikethickness = 0),
+                   xaxis = list(
+                     spikethickness = 1,
+                     spikedash = "dot",
+                     spikecolor = "black",
+                     spikemode = "across+marker",
+                     spikesnap = "cursor"
+                   ),
+                   hovermode = 'x',
+                   hoverdistance = 1,
+                   # legend = list()
+                   showlegend = legend,
+                   title = ""
+    )
+  
+  if(plottrend == TRUE) {
+    p_deaths <- p_deaths %>% 
+      plotly::add_trace(y = ~deaths.ravg, 
+                        name = '7 day moving average', type = 'scatter', mode = 'lines',
+                        line = list(color = col.deaths, width = data.lwd, shape = 'hvh'),
+                        legendgroup = 'group_deaths',
+                        hoverinfo = "x+text",
+                        hoverlabel = hoverlabel,
+                        text = ~paste(display(deaths.ravg),serif("new deaths (7 day average)")) )
+  }
+  
+  p_deaths
+}
+
+plot_dashboard <- function(database, params, 
+                           daterange = c("2020-02-15", #start
+                                         as.character(Sys.Date())  #end
+                                         ),
+                           plotcumulative = FALSE) {
+  p_asc <- plot_ascertainment(params$q, logy = FALSE)
+  p_reff <- plot_R_effective(database, legend = TRUE, maxy = 4)
+  p_nc <- plot_nowcast_from_case_reports(database, legend = TRUE, logy = FALSE, 
+                                         maxy = max(database$nowcast.upper),
+                                         plotcases = FALSE,
+                                         plotdeaths = FALSE,
+                                         plotcumulative = plotcumulative)
+  p_cases <- plot_cases(database, legend = TRUE, logy = FALSE)
+  p_deaths <- plot_deaths(database, legend = TRUE, logy = FALSE)
+  
+  dash <- plotly::subplot(p_nc, p_cases, p_deaths, p_asc, p_reff,
+                          nrows = 5,
+                          heights = NULL,
+                          shareX = TRUE,
+                          titleY = TRUE) %>% 
+    plotly::layout(
+      xaxis = list(range = c(as.numeric(as.POSIXct(daterange[1], format="%Y-%m-%d"))*1000,
+                             as.numeric(as.POSIXct(daterange[2], format="%Y-%m-%d"))*1000),
+                   type = "date"
+      )
+    )
+  dash
+}
+
+# Visual Variables ----------------------------------------------------------------------------
+
+col.cases <- 'rgba(0, 0, 0, .35)'
+col.deaths <- 'rgba(64, 0, 0, .5)'
+col.I <- 'rgba(230, 7, 7, .75)'
+col.I.ci <- 'rgba(230, 7, 7, .15)'
+col.E <- 'rgba(7, 164, 181, 0.75)'
+col.E.ci <- 'rgba(7, 164, 181, 0.15)'
+col.nowcast <- 'rgba(7, 7, 230, 0.75)'
+col.nowcast.ci <- 'rgba(7, 7, 230, 0.15)'
+col.invisible <- 'rgba(7, 7, 230, .01)'
+col.R = 'rgb(164, 0, 181, .75)'
+col.R.ci = 'rgb(164, 0, 181, .25)'
+col.other = 'rgb(0, 0, 0, .75)'
+col.other.ci = 'rgb(0, 0, 0, .25)'
+
+ci.lwd <- .5
+mean.lwd <- 1
+data.lwd <- 2
+
 

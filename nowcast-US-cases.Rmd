@@ -11,10 +11,10 @@ output:
 ```{r setup, include=FALSE}
 
 knitr::opts_chunk$set(
-  echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%'
+  echo=FALSE, message = FALSE, warning = FALSE, cache = FALSE, out.width = '100%', out.height = '550px'
 )
 
-source('R/run_nowcast_US.R') # replace with sourcing in crontab
+# source('R/run_nowcast_US.R') # replace with sourcing in crontab
 
 library(tidyverse)
 source('R/nowcast.R')
@@ -51,64 +51,66 @@ p <- plot_nowcast_from_case_reports(US, plotcumulative = TRUE, maxy = 10^8, lege
 htmlwidgets::saveWidget(p, "USnowcast_plot.html")
 
 # plot inline
-plot_nowcast_from_case_reports(US, maxy = 10^8, legend = FALSE)
+# plot_nowcast_from_case_reports(US, maxy = 10^8, legend = FALSE)
+
+# plot dashboard
+plot_dashboard(US, params.US, plotcumulative = TRUE)
 ```
 
 ### AK
 ```{r AK}
-plot_nowcast_from_case_reports(AK, maxy = 10^7)
+plot_dashboard(AK, params.US, plotcumulative = TRUE)
 ```
 
 ### AL
 ```{r AL}
-plot_nowcast_from_case_reports(AL, maxy = 10^7)
+plot_dashboard(AL, params.US, plotcumulative = TRUE)
 ```
 
 ### AR
 ```{r AR}
-plot_nowcast_from_case_reports(AR,  maxy = 10^7)
+plot_dashboard(AR, params.US, plotcumulative = TRUE)
 ```
 
 ### AZ
 ```{r AZ}
-plot_nowcast_from_case_reports(AZ,  maxy = 10^7)
+plot_dashboard(AZ, params.US, plotcumulative = TRUE)
 ```
 
 ### CA
 ```{r CA}
-plot_nowcast_from_case_reports(CA,  maxy = 10^7)
+plot_dashboard(CA, params.US, plotcumulative = TRUE)
 ```
 
 ### CO
 ```{r CO}
-plot_nowcast_from_case_reports(CO,  maxy = 10^7)
+plot_dashboard(CO, params.US, plotcumulative = TRUE)
 ```
 
 ### CT
 ```{r CT}
-plot_nowcast_from_case_reports(CT,  maxy = 10^7)
+plot_dashboard(CT, params.US, plotcumulative = TRUE)
 ```
 
 ### DC
 ```{r DC}
-plot_nowcast_from_case_reports(DC,  maxy = 10^7)
+plot_dashboard(DC, params.US, plotcumulative = TRUE)
 ```
 
 ### DE
 ```{r DE}
-plot_nowcast_from_case_reports(DE,  maxy = 10^7)
+plot_dashboard(DE, params.US, plotcumulative = TRUE)
 ```
 
 ### FL
 ```{r FL}
-plot_nowcast_from_case_reports(FL,  maxy = 10^7)
+plot_dashboard(FL, params.US, plotcumulative = TRUE)
 ```
 
 ### GA
 ```{r GA}
-plot_nowcast_from_case_reports(GA,  maxy = 10^7)
+plot_dashboard(GA, params.US, plotcumulative = TRUE)
 
-GA <- readRDS("data/output/GA.nowcast.from.cases.rds")
 # Export single plot
 p <- plot_nowcast_from_case_reports(GA, plotcumulative = TRUE, maxy = 10^7, legend = FALSE)
 htmlwidgets::saveWidget(p, "GAnowcast_plot.html")
@@ -117,222 +119,222 @@ htmlwidgets::saveWidget(p, "GAnowcast_plot.html")
 
 ### HI
 ```{r HI}
-plot_nowcast_from_case_reports(HI,  maxy = 10^7)
+plot_dashboard(HI, params.US, plotcumulative = TRUE)
 ```
 
 ### IA
 ```{r IA}
-plot_nowcast_from_case_reports(IA,  maxy = 10^7)
+plot_dashboard(IA, params.US, plotcumulative = TRUE)
 ```
 
 ### ID
 ```{r ID}
-plot_nowcast_from_case_reports(ID,  maxy = 10^7)
+plot_dashboard(ID, params.US, plotcumulative = TRUE)
 ```
 
 ### IL
 ```{r IL}
-plot_nowcast_from_case_reports(IL,  maxy = 10^7)
+plot_dashboard(IL, params.US, plotcumulative = TRUE)
 ```
 
 ### IN
 ```{r IN}
-plot_nowcast_from_case_reports(IN,  maxy = 10^7)
+plot_dashboard(IN, params.US, plotcumulative = TRUE)
 ```
 
 ### KS
 ```{r KS}
-plot_nowcast_from_case_reports(KS,  maxy = 10^7)
+plot_dashboard(KS, params.US, plotcumulative = TRUE)
 ```
 
 ### KY
 ```{r KY}
-plot_nowcast_from_case_reports(KY,  maxy = 10^7)
+plot_dashboard(KY, params.US, plotcumulative = TRUE)
 ```
 
 ### LA
 ```{r LA}
-plot_nowcast_from_case_reports(LA,  maxy = 10^7)
+plot_dashboard(LA, params.US, plotcumulative = TRUE)
 ```
 
 ### MA
 ```{r MA}
-plot_nowcast_from_case_reports(MA,  maxy = 10^7)
+plot_dashboard(MA, params.US, plotcumulative = TRUE)
 ```
 
 ### MD
 ```{r MD}
-plot_nowcast_from_case_reports(MD,  maxy = 10^7)
+plot_dashboard(MD, params.US, plotcumulative = TRUE)
 ```
 
 ### ME
 ```{r ME}
-plot_nowcast_from_case_reports(ME,  maxy = 10^7)
+plot_dashboard(ME, params.US, plotcumulative = TRUE)
 ```
 
 ### MI
 ```{r MI}
-plot_nowcast_from_case_reports(MI,  maxy = 10^7)
+plot_dashboard(MI, params.US, plotcumulative = TRUE)
 ```
 
 ### MN
 ```{r MN}
-plot_nowcast_from_case_reports(MN,  maxy = 10^7)
+plot_dashboard(MN, params.US, plotcumulative = TRUE)
 ```
 
 ### MO
 ```{r MO}
-plot_nowcast_from_case_reports(MO,  maxy = 10^7)
+plot_dashboard(MO, params.US, plotcumulative = TRUE)
 ```
 
 ### MS
 ```{r MS}
-plot_nowcast_from_case_reports(MS,  maxy = 10^7)
+plot_dashboard(MS, params.US, plotcumulative = TRUE)
 ```
 
 ### MT
 ```{r MT}
-plot_nowcast_from_case_reports(MT,  maxy = 10^7)
+plot_dashboard(MT, params.US, plotcumulative = TRUE)
 ```
 
 ### NC
 ```{r NC}
-plot_nowcast_from_case_reports(NC,  maxy = 10^7)
+plot_dashboard(NC, params.US, plotcumulative = TRUE)
 ```
 
 ### ND
 ```{r ND}
-plot_nowcast_from_case_reports(ND,  maxy = 10^7)
+plot_dashboard(ND, params.US, plotcumulative = TRUE)
 ```
 
 ### NE
 ```{r NE}
-plot_nowcast_from_case_reports(NE,  maxy = 10^7)
+plot_dashboard(NE, params.US, plotcumulative = TRUE)
 ```
 
 ### NH
 ```{r NH}
-plot_nowcast_from_case_reports(NH,  maxy = 10^7)
+plot_dashboard(NH, params.US, plotcumulative = TRUE)
 ```
 
 ### NJ
 ```{r NJ}
-plot_nowcast_from_case_reports(NJ,  maxy = 10^7)
+plot_dashboard(NJ, params.US, plotcumulative = TRUE)
 ```
 
 ### NM
 ```{r NM}
-plot_nowcast_from_case_reports(NM,  maxy = 10^7)
+plot_dashboard(NM, params.US, plotcumulative = TRUE)
 ```
 
 ### NV
 ```{r NV}
-plot_nowcast_from_case_reports(NV,  maxy = 10^7)
+plot_dashboard(NV, params.US, plotcumulative = TRUE)
 ```
 
 ### NY
 ```{r NY}
-plot_nowcast_from_case_reports(NY,  maxy = 10^7)
+plot_dashboard(NY, params.US, plotcumulative = TRUE)
 ```
 
 ### OH
 ```{r OH}
-plot_nowcast_from_case_reports(OH,  maxy = 10^7)
+plot_dashboard(OH, params.US, plotcumulative = TRUE)
 ```
 
 ### OK
 ```{r OK}
-plot_nowcast_from_case_reports(OK,  maxy = 10^7)
+plot_dashboard(OK, params.US, plotcumulative = TRUE)
 ```
 
 ### OR
 ```{r OR}
-plot_nowcast_from_case_reports(OR,  maxy = 10^7)
+plot_dashboard(OR, params.US, plotcumulative = TRUE)
 ```
 
 ### PA
 ```{r PA}
-plot_nowcast_from_case_reports(PA,  maxy = 10^7)
+plot_dashboard(PA, params.US, plotcumulative = TRUE)
 ```
 
 ### RI
 ```{r RI}
-plot_nowcast_from_case_reports(RI,  maxy = 10^7)
+plot_dashboard(RI, params.US, plotcumulative = TRUE)
 ```
 
 ### SC
 ```{r SC}
-plot_nowcast_from_case_reports(SC,  maxy = 10^7)
+plot_dashboard(SC, params.US, plotcumulative = TRUE)
 ```
 
 ### SD
 ```{r SD}
-plot_nowcast_from_case_reports(SD,  maxy = 10^7)
+plot_dashboard(SD, params.US, plotcumulative = TRUE)
 ```
 
 ### TN
 ```{r TN}
-plot_nowcast_from_case_reports(TN,  maxy = 10^7)
+plot_dashboard(TN, params.US, plotcumulative = TRUE)
 ```
 
 ### TX
 ```{r TX}
-plot_nowcast_from_case_reports(TX,  maxy = 10^7)
+plot_dashboard(TX, params.US, plotcumulative = TRUE)
 ```
 
 ### UT
 ```{r UT}
-plot_nowcast_from_case_reports(UT,  maxy = 10^7)
+plot_dashboard(UT, params.US, plotcumulative = TRUE)
 ```
 
 ### VA
 ```{r VA}
-plot_nowcast_from_case_reports(VA,  maxy = 10^7)
+plot_dashboard(VA, params.US, plotcumulative = TRUE)
 ```
 
 ### VT
 ```{r VT}
-plot_nowcast_from_case_reports(VT,  maxy = 10^7)
+plot_dashboard(VT, params.US, plotcumulative = TRUE)
 ```
 
 ### WA
 ```{r WA}
-plot_nowcast_from_case_reports(WA,  maxy = 10^7)
+plot_dashboard(WA, params.US, plotcumulative = TRUE)
 ```
 
 ### WI
 ```{r WI}
-plot_nowcast_from_case_reports(WI,  maxy = 10^7)
+plot_dashboard(WI, params.US, plotcumulative = TRUE)
 ```
 
 ### WY
 ```{r WY}
-plot_nowcast_from_case_reports(WY,  maxy = 10^7)
+plot_dashboard(WY, params.US, plotcumulative = TRUE)
 ```
 
 ### Guam
 ```{r GU}
-plot_nowcast_from_case_reports(GU,  maxy = 10^7)
+plot_dashboard(GU, params.US, plotcumulative = TRUE)
 ```
 
 ### Northern Mariana Islands
 ```{r MP}
-plot_nowcast_from_case_reports(MP)
+plot_dashboard(MP, params.US, plotcumulative = TRUE)
 ```
 
 ### Puerto Rico
 ```{r PR}
-plot_nowcast_from_case_reports(PR,  maxy = 10^7)
+plot_dashboard(PR, params.US, plotcumulative = TRUE)
 ```
 
 ### US Virgin Islands
 ```{r VI}
-plot_nowcast_from_case_reports(VI,  maxy = 10^7)
+plot_dashboard(VI, params.US, plotcumulative = TRUE)
 ```
 
-## ![](nowcast-legend-combined.png)
+<!-- ## ![](nowcast-legend-combined.png) -->
 
-The nowcast for the whole US is calculated from case reports at the national level. It is not the sum of the state level nowcasts. The nowcast for the whole US does not necessarily agree with the the sum of state level nowcasts.
+<!-- The nowcast for the whole US is calculated from case reports at the national level. It is not the sum of the state level nowcasts. The nowcast for the whole US does not necessarily agree with the the sum of state level nowcasts. -->
 
 ### Parameters
 
