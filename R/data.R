@@ -12,6 +12,7 @@ path <- "https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/US/US_
 
 states <- state_codes$state_abbr
 states <- states[states != ""]
+startdate <- as.Date("2019-12-01")
 
 cases.US <- read_csv(paste0(path, "UScases_by_state_wikipedia.csv")) %>% 
   # filter(Date != c("Total") & Date != c("Date")) %>% 
@@ -20,15 +21,12 @@ cases.US <- read_csv(paste0(path, "UScases_by_state_wikipedia.csv")) %>%
   filter(!is.na(Date)) %>% 
   mutate_at(vars(-Date), as.integer) %>% 
   # mutate(Date = as.Date(Date, "%Y-%m-%d")) %>% 
-  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  padr::pad(start_val = startdate) %>%
   replace(., is.na(.), 0) %>%
   replace(., . < 0, 0) %>%
   tibbletime::as_tbl_time(index=Date) %>% 
   mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
   filter(Date < Sys.Date())
-
-# save RDS
-saveRDS(cases.US,"data/cases.US.rds")
 
 # FATALITIES
 
@@ -39,14 +37,21 @@ fatalities.US <- read_csv(paste0(path, "USfatalities_by_state_wikipedia.csv")) %
   filter(!is.na(Date)) %>% 
   mutate_at(vars(-Date), as.integer) %>% 
   # mutate(Date = as.Date(paste(Date, "2020"), "%b %d %Y")) %>% 
-  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  padr::pad(start_val = startdate) %>%
   replace(., is.na(.), 0) %>%
   replace(., . < 0, 0) %>%
   tibbletime::as_tbl_time(index=Date) %>% 
   mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
   filter(Date < Sys.Date())
 
+# Reconcile date range
+
+enddate <- min(max(cases.US$Date),max(fatalities.US$Date))
+cases.US <- cases.US %>% filter(Date <= enddate) 
+fatalities.US <- fatalities.US %>% filter(Date <= enddate) 
+
 # save RDS
+saveRDS(cases.US,"data/cases.US.rds")
 saveRDS(fatalities.US,"data/fatalities.US.rds")
 
 
