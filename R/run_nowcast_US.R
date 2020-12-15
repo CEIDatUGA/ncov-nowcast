@@ -104,7 +104,6 @@ do_nowcast(admin = "US", cases = cases.US, fatalities = fatalities.US, params.US
 
 statesvector <- cases.US %>% select(-Date, -US) %>% names()
 
-statesvector <- c("GU","MP","PR","VI")
 for(s in statesvector){
   do_nowcast(admin = s, cases = cases.US, fatalities = fatalities.US, params.US, samplesize = 1.0)
   }
