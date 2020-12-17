@@ -107,9 +107,21 @@ As with the number of latent cases, we only have a good estimate of $\frac{\Delt
 
 **U.S. case and fatality reports by state**
 
-We compile daily case and fatality reports for U.S. states and territories from <https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases>, which is updated by anonymous contributors.
+On December 17, 2020, we switched our data source for the US nowcast to the COVID-19 Data Repository maintained by the Center for Systems Science and Engineering (CSSE) at Johns Hopkins University[^1].
 
-Data from the Wikipedia tables are downloaded and cleaned daily and made publicly available in CSV format at <a href="https://github.com/CEIDatUGA/COVID-19-DATA" target="_blank">https://github.com/CEIDatUGA/COVID-19-DATA</a>
+[^1]: 
+Dong, E. et al. An interactive web-based dashboard to track COVID-19 in real time. 
+Correction to Lancet Infect Dis. February 19, 2020. <https://doi.org/10.1016/S1473-3099(20)30120-1>
+
+We use the following times series of confirmed cases:
+
+<a href="https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv" target="_blank">time_series_covid19_confirmed_US.csv</a>
+
+We use the following time series of reported deaths:
+
+<a href="https://github.com/CSSEGISandData/COVID-19/blob/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv" target="_blank">time_series_covid19_deaths_US.csv</a>
+
+Prior to December 17, 2020, we used daily case and fatality reports for U.S. states and territories compiled from <https://en.wikipedia.org/wiki/Template:2019%E2%80%9320_coronavirus_pandemic_data/United_States_medical_cases>, which is updated by anonymous contributors. Data from the Wikipedia tables are downloaded and cleaned daily and made publicly available in CSV format at <a href="https://github.com/CEIDatUGA/COVID-19-DATA" target="_blank">https://github.com/CEIDatUGA/COVID-19-DATA</a>. We continue to update daily.
 
 
 <!-- **Fatalities by Country** -->
