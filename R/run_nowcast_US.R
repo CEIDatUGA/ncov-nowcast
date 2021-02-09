@@ -96,8 +96,9 @@ saveRDS(params.US,"data/params.US.rds")
 
 # US ----------------------------------------------------------------------
 
+# TEMPORARILY DISABLEING US NOWCAST
 # start.time <- proc.time()
-do_nowcast(admin = "US", cases = cases.US, fatalities = fatalities.US, params.US, samplesize = 0.1)
+# do_nowcast(admin = "US", cases = cases.US, fatalities = fatalities.US, params.US, samplesize = 0.05)
 # (proc.time()-start.time)['elapsed']/60
 
 # states ------------------------------------------------------------------
