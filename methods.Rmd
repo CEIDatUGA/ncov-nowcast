@@ -1,8 +1,0 @@
----
-title: "Methods"
-output: html_notebook
----
-
-Methods and details for preprint...
-
-This document will serve as a preprint.
