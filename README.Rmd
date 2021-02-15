@@ -19,17 +19,20 @@ knitr::opts_chunk$set(
 Contact: Eric Marty (emarty@uga.edu)
 
 Contributors:  
+John M. Drake (jdrake@uga.edu)  
+Éric Marty (emarty@uga.edu) - visualization, nowcast architecture  
+Rachel Mercaldo (mercaldo@uga.edu) - forecasting  
+Austin M. Smith (amsmith11@usf.edu) - analysis  
+Andrew M. Kramer (amkramer@usf.edu)    
 Tim Wildauer (twildauer@blc.edu) - deconvolution
-John Drake (jdrake@uga.edu)  
-Eric Marty (emarty@uga.edu) - visualization, nowcast architecture
-Rachel Mercaldo (mercaldo@uga.edu) - forecasting
 
 ## Contributing
 
-* Code for functions should go in scripts in the R/ folder.
-* High level scripts or Rmd documents should go at the top level.
-* Temporary data products are in the /data folder. 
-* Source data is pulled directly from wikipedia or from <https://github.com/CEIDatUGA/COVID-19-DATA>
+* Code for functions is in the `R/` folder.
+* High level scripts or Rmd documents are found at the top level.
+* Temporary data products are in the `/data` folder. 
+* Nowcast outputs are in the `/data/output` folder. 
+* Source data for US nowcasts are maintained at <https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/US/US_wikipedia_cases_fatalities/>
 
 ## Objective
 
@@ -40,7 +43,7 @@ A key problem in making management decisions is estimating the size of the epide
 
 * Case notifications are incomplete (there is under-reporting).
 * Case notifications are primarily associated with patient isolation and therefore are not contributing greatly to transmission.
-* 2019-nCov has a significant incubation period. These presymptomatic cases are also part of the epidemic.
+* SARS-CoV-2 has a significant incubation period. These presymptomatic cases are also part of the epidemic.
 
 ## Strategy
 
