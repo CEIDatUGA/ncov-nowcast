@@ -1,0 +1,778 @@
+---
+title: "Nowcasting the current size of the COVID-19 outbreak in China"
+author: "Tim Wildauer, Rachel Mercaldo, Eric Marty, John Drake"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(tibbletime)
+library(padr)
+library(tvReg)
+library(forecast)
+source('R/package.R')
+source('R/deconcolve.R')
+source('R/simple_tdar.R')
+source('R/package_tv.R')
+source('R/nowcast.R')
+
+```
+
+
+# Problem
+
+We wish to estimate the total current size of the COVID-19 outbreak, i.e. the total number of people who are currently infected with SARS-CoV2.  
+
+We need to estimate this number from the current count of confirmed cases of COVID-19. The count of confirmed cases does not include those who are symptomatic but whose cases have not been confirmed, those who have been exposed and cary the virus but are not yet symptomatic, and asymptomatic cases (those who are exposed but never develop symptoms).
+
+In order to estimate outbreak size, we assume a model that supposes that at each point in time $t$, every individual in the population may be classified according to one of the following mutually exclusive segments, in accordance with the modified SEIR stochastic model used in <http://2019-coronavirus-tracker.com/stochastic.html>:
+
+$S(t)$ Susceptible individuals
+$E(t)$ Exposed individuals in the community (Individuals with a latent infection, not yet able to transmit)
+$I(t)$ Infectious individuals in the community
+$H(t)$ Individuals with newly confirmed cases (hospitalized or otherwise removed from the community but still infectious)
+$R(t)$ Discharged (and no longer infectious) individuals
+
+The total oubreak size $Q(t) = E(t) + I(t) + H(t)$
+
+Here, we lay out a procedure to estimate these time varying populations from a time series of confirmed cases $C(t)$ using deconvolution-based backcasting and time series forecasting. We apply our method to the outbreak in China.
+
+## Model details
+
+We are given only a time series of new case reports $C(t)$. Since we consider that case reporting occurs immediately upon hospitalization, we assume a simplified SEIR model with no $H$ class, and the total outbreak size $Q(t) = E(t) + I(t)$. (If in other situations it is determined that there is a lag between hospitalization and case reporting, as may be the case early in an outbreak, then we could reintroduce the $H$ class.)
+
+**Detection probability** $q(t)$
+
+Following [J.M. Drake & P. Rohani. A stochastic model for the transmission of 2019-nCov in Wuhan](http://2019-coronavirus-tracker.com/stochastic-model.html), we assume the case detection probability to be time varying, with $q(t)$ assumed to have been quite low before the opening of fever clinics on 9 January, 2020, and to have stepped up after January 9. Drake and Rohani have roughly estimated the baseline case detection rate to be $q_0 = 0.11$, and the post January 9 rate to be $q_1 = 0.11$.
+
+```{r}
+q_fcn <- function(date) {if_else(date < '2020-01-10', 0.11, 0.98)}
+```
+
+
+**Proportion of cases that are asymptomatic** $a = 0.346$
+
+Based on testing of passengers on the Princes Cruises ship in Yokohama, Japan, Mizumoto *et al.* estimated that the percentage of cases that are asymptomatic $a$ is 34.6% (95% CrI: 29.4%–39.8%) [^1]. 
+
+[^1] : Kenji Mizumoto, Katsushi Kagaya, Alexander Zarebski, Gerardo Chowell. Estimating the Asymptomatic Ratio of 2019 Novel Coronavirus onboard the Princess Cruises Ship, 2020. medRxiv preprint. <https://doi.org/10.1101/2020.02.20.20025866>
+
+```{r}
+a_fcn <- function() {0.346}
+```
+
+**Transmissability of undetectable cases** $c = 0.52$
+
+The coefficient of relative transmissibility $c$ represents the transmissibility of undetected cases relative to detected cases. Shaman *et al.* ()[^2] have estimated that the transmissibility in undetected cases is approximately 52% of that in detected cases. Therefore we set $c = 0.52$.
+
+[^2] : Shaman *et al.*, personal communication with John Drake
+
+```{r}
+c_fcn <- function() {0.52}
+```
+
+**Detectable and undetectable cases**
+
+Exposed cases are either detectable $E_d$ or detectable $E_u$ according to $q(t)$ and $a$. Note, detection parameters $q(t)$ and $a$ are applied not to the case reports, but to the exposed and infectious classes, considering that a certain percentage of these are "detectable" (i.e. eventually detected and represented in the times series of case reports $C(t)$. So $E_u(t) = q(t)E_d(t) $ and $E(t) = E_u(t) + E_d(t)$.
+
+Infectious cases are also detected $I_d$ or undetected $I_u$, and $I(t) = I_u(t) + I_d(t)$. Undetected infectious cases depend on the detection probability $q(t)$, proportion asymptomatic $a$ and coefficient of relative transmissibility $c$.
+
+
+**Infectious period**
+
+The period between symptom onset and hospitalization $\frac{1}{\gamma}$ is time dependent and affected by containment efforts. In the simplified SEIR model, $\frac{1}{\gamma}$ is the period between symptom onset and case report. 
+
+The natural infectious period $\frac{1}{\gamma_0}$ in the absence of containment is assumed to be 7 days.
+
+```{r}
+mean.infectious.period <- 7 # natural infectious period
+gamma0_fcn <- function() {1/mean.infectious.period} # natural recovery rate
+```
+
+**Incubation period**
+
+Becker has estimated the period between exposure and symptom onset $\frac{1}{\sigma}$ to be 6.4 days[^2].
+
+[^2] : Becker (citation needed)
+
+`mean.incubation.period <- 6.4`
+
+Need a mean and shape parameter. Tim uses:
+
+`incubation.shape <- 6.2`
+`incubation.mean <- 5.6`
+
+```{r}
+incubation.shape <- 6.2
+incubation.mean <- 5.6
+incubation.scale <- incubation.mean/incubation.shape
+incubation.sd <- sqrt(incubation.shape*incubation.scale^2)
+distribution <- "gamma" # not sure where this gets used. LOOK INSIDE FUNCTION FOR USE OF GLOBAL VARIABLE
+
+sigma_fcn <- function() {1/incubation.mean}
+```
+
+
+## Procedure
+
+Given the time series of new case reports $C(t)$, we first derive a time series of newly symptomatic individuals $I_s(t)$ by deconvolution. From $I_s(t)$ and the natural infectious period $\frac{1}{\gamma_0}$ we build a time series of infectious (and eventually detected) individuals $I_d(t)$.
+
+We derive $I_u(t)$ from $I_d(t)$ and the detection parameters $q(t)$ and $a$ and the transmissibility parameter $c$. 
+
+The time series of exposed $E(t)$ is derived by a second deconvolution from $I(t) = I_u(t) + I_d(t)$
+
+The current outbreak size $Q(t) = E(t) + I(t)$
+
+The curve $E(t)$, obtained by deconvolution of $I(t)$ is considered valid up to about 10 days before the present (1 mean incubation period of 5.6 days plus 2 standard deviations). We fit $E(t)$ using a time varying AR model with lag 1, and forecast to the present before summing with $I(t)$ to obtain a nowcast of the current epidemic size.
+
+## Time series of new case reports $C(t)$ in China 
+
+We extract a times series of new case reports $C(t)$ in China from the following table of new case reports by province:
+
+<https://docs.google.com/spreadsheets/d/1gTj4zFMfXRk92CCQAOwa04ZBhqJ4oSmQFm_nb8-YXbw/edit#gid=1767307356>
+
+
+```{r data, echo=TRUE, message = FALSE, warning = FALSE}
+
+# read data directly to google sheet.
+
+sheet <- "https://docs.google.com/spreadsheets/d/1gTj4zFMfXRk92CCQAOwa04ZBhqJ4oSmQFm_nb8-YXbw/edit#gid=1767307356"
+
+china_province_data_cases_latest <- googlesheets4::sheets_read(sheet) 
+
+# Create a Time Tibble; and sum provinces
+
+fixcolumns <- function(x) {
+  if(is.list(x)){
+    is.na(x) <- lengths(x) == 0
+    x <- gsub("[()]","",x)
+    as.numeric(unlist(x))
+  }
+}
+
+cases <- china_province_data_cases_latest %>% 
+  rename_all(list(~make.names(.))) %>% 
+  # select(-`Hubei (clinical)`) %>% 
+  # rename(Date = `Date (CST)`) %>% 
+  mutate_if(is.list, fixcolumns) %>% 
+  mutate(Date = as.Date(Date)) %>% 
+  padr::pad(start_val = as.Date("2019-12-01")) %>%
+  replace(., is.na(.), 0) %>%
+  tibbletime::as_tbl_time(index=Date) %>% 
+  mutate(China = rowSums(.[,-1],na.rm = TRUE))
+
+cases.china <- cases %>% select(Date, cases = China)
+
+# plot
+p_Cases <- plotly::plot_ly(data = cases, 
+                x = ~Date , y = ~China,
+                mode = 'lines+markers')
+  
+
+p_Cases_logy <- p_Cases %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+  
+  # plot(x=cases$Date,y=cases$China,type="o",pch=20,cex=.7,log='y')
+
+p_Cases_logy
+```
+
+
+## Using deconvolution to backcast the number symptomatic and exposed.
+
+
+### Deconvolution of time series of cases to recreate time series of symptom onset
+
+We reconstruct a time series of symptom onset $I_s(t)$ from the time series of new case reports $C(t)$ using deconvolution. 
+
+The beriod between symptom onset and case confirmation $\frac{1}{\gamma}$ is variable and changed throughout the early stages of the outbreak in Wuhan.
+
+There are four different stages of the outbreak. Pre-January 9, January 9 to January 18, January 19 to January 23, and post-January 23. These timeframes are defined by Paige Miller in https://docs.google.com/document/d/1GpTvsoTZBWphn2tLbKHE5Z1ZE8RuD3caTHar-DqtqHc/edit?pli=1. The time between onset of symptoms and confirmation is distinct between these time frames. See <http://2019-coronavirus-tracker.com/stochastic.html> for more details.
+
+**Table 1:** Comfirmation time (Period in days $\frac{1}{\gamma}$ between symptom onset and case confirmation). Mean, standard deviation and distribution of confirmation time for each stage of the outbreak.
+
+```{r stages, echo=FALSE}
+
+# Deconvolution Stages
+stages <- tibble(
+  stage = c(1:4),
+  start = as.Date(c('2019-12-01','2020-01-09','2020-01-19','2020-01-24')),
+  end = c(as.Date(c('2020-01-08','2020-01-18','2020-01-23')),max(cases$Date)),
+  mean = c(6.57,4.77,.812,.2),
+  sd = c(4.78,3.11,1.12,.45),
+  distribution = "lognorm")
+stages
+```
+
+
+```{r database, echo=TRUE, message = FALSE, warning = FALSE}
+# set up container
+
+stage <- list()
+for (i in 1:nrow(stages)) {
+  stage[[i]] <- create_series(stages$start[i] ~ stages$end[i], period = '1 d',  class = "Date") %>% 
+  mutate(stage = i, mean = stages$mean[i], sd = stages$sd[i], distribution = stages$distribution[i])
+}
+database <- tbl_time(bind_rows(stage), index = date) %>% 
+  mutate(cases = cases$China) %>% rename(Date = date)
+remove(stage)
+timespan <- length(database$Date)
+```
+
+Tim: "We use a combination of the ridge regression transition matrix and random deconvolution to deconvolve the time-variant convolution. This method has not been tested yet, but it seems to work."
+
+```{r, echo=TRUE, message = FALSE, warning = FALSE}
+estimates <- deconvolve_infection_curve_random_tv(as.data.frame(database))
+incubation_matrix <- incubation_period_distribution_matrix_tv(
+  outbreak_parms = as.data.frame(database), 
+  rl = TRUE)
+final_estimate <- deconvolve_infection_curve_rl(
+  symptom_onset_curve = database$cases,
+  matrix = incubation_matrix,
+  estimate = estimates
+  )
+database$symptomatic <- round_infection_curve(database$cases, final_estimate)
+
+# # plot
+# p_Symptomatic <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, name = 'confirmed', 
+#                      type = 'scatter', mode = 'lines') %>% 
+#   plotly::add_trace(y = ~symptomatic, name = 'symptom onset (estimated)', mode = 'lines')
+#   
+
+
+### Plot
+
+col.cases <- 'rgba(0, 0, 0, .75)'
+col.symptomatic <- 'rgba(230, 7, 7, .75)'
+col.I_d <- 'rgba(230, 7, 7, .75)'
+col.I_u <- 'rgba(230, 7, 7, .50)'
+col.I <- 'rgba(230, 7, 7, .25)'
+col.exposed <- 'rgba(7, 164, 181, 0.75)'
+col.exposed.ci <- 'rgba(7, 164, 181, 0.10)'
+col.E_d <- 'rgba(7, 164, 181, 0.75)'
+col.E_u <- 'rgba(7, 164, 181, 0.50)'
+col.E <- 'rgba(7, 230, 230, 1.0)' # brighter
+col.fcast <- 'rgba(7, 7, 230, 0.75)'
+col.fcast.ci <- 'rgba(7, 7, 230, 0.25)'
+
+p_Symptomatic <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'newly confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~symptomatic, 
+                    name = 'symptom onset (estimated)', mode = 'lines',
+                    line = list(color = col.symptomatic, width=1))
+  
+p_Symptomatic %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+
+```
+
+### Time series of detected infectious individuals $I(t)$
+
+$I_s(t)$ only gives us a time series of those *newly* infectious (detactable) cases. To find the number infectious (detectible) cases $I_d(t)$, we sum the number of newly infectious over the natural infectious period $\frac{1}{\gamma_0}$
+
+```{r, echo=TRUE, message = FALSE, warning = FALSE}
+database <- database %>% 
+  mutate(I_d = zoo::rollapply(database$symptomatic, width = 7, FUN = sum, partial = TRUE, align = "right"))
+
+
+p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'newly confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~symptomatic, 
+                    name = 'symptom onset (detected)', mode = 'lines',
+                    line = list(color = col.symptomatic, width=1)) %>% 
+  plotly::add_trace(y = ~I_d, 
+                    name = 'I (detected)', mode = 'lines',
+                    line = list(color = col.I_d, width=2))
+
+  
+p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+
+```
+
+### Accounting for undetected Infectious cases
+
+$I_d(t)$ represents the number of infectious whose cases were later confirmed. This curve includes neither individuals who were sympotmatic but whose cases were never reported (they were missed in the reporting process), nor the number of people infected but asympotmatic (people who never develop symptoms and therefore were also missed in the reporting process). We can simplify accounting for undetected cases by assuming only two subsets of cases: detected and undetected (asymptomatic or weakly symptomatic), and assume that all strongly symptomatic cases were detected.
+
+In this case, undetected infectious cases depend on the detection probability $q(t)$ and coefficient of relative transmissibility $c$, which represents the transmissibility of undetected cases relative to detected cases.
+
+$$
+\text{let } Y = \text{total number of cases Infectious or Asymptomatic} \\
+I_d = qY \\
+Y = \frac{I_d}{q}\\
+Y_u = Y - I_d \\
+I_u = cY_u \\
+I_u = c(Y - I_d) \\
+I_u = c \left( \frac{I_d}{q} - I_d \right) \\
+I_u = cI_d \left( \frac{1}{q} - 1 \right) \\
+I = I_u + I_d
+$$
+
+
+```{r}
+# Add basic parameters
+database <- database %>% 
+  mutate(q = q_fcn(Date)) %>% # Add q
+  mutate(c = c_fcn()) %>% 
+  mutate(a = a_fcn()) %>% 
+  mutate(gamma0 = gamma0_fcn()) %>% # natural recovery/removal rate
+  mutate(gamma = 1/mean) %>% # effective recovery/removal rate
+  mutate(sigma = sigma_fcn()) # rate from E to I
+
+# Add I_u and I
+database <- database %>% 
+  mutate(I_u = c * I_d * ((1/q)-1)) %>% 
+  mutate(I = I_u + I_d)
+
+p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'newly confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~symptomatic, 
+                    name = 'symptom onset (detected)', mode = 'lines',
+                    line = list(color = col.symptomatic, width=1)) %>% 
+  plotly::add_trace(y = ~I_d, 
+                    name = 'I (detected)', mode = 'lines',
+                    line = list(color = col.I_d, width=2)) %>% 
+  plotly::add_trace(y = ~I_u, 
+                    name = 'I (undetected)', mode = 'lines',
+                    line = list(color = col.I_u, width=2,dash="dot")) %>% 
+  plotly::add_trace(y = ~I, 
+                    name = 'I', mode = 'lines',
+                    line = list(color = col.I, width=4))
+  
+p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+
+```
+
+Changing $q$ abruptly on January 10 has the effect of introducing a abrupt drop in $I$ on that date. Perhaps this is not realistic and a continuously varying function for $q$ should be considered.
+
+<!-- If we know the reporting rate of sympotmatic cases $\rho$, we can adjust the symptom onset curve accordingly by multiplying by $1 - \rho$. -->
+
+### Accounting for asymptomatic cases separately from $q$
+
+If the detection probability $q$ reflects only the detection of symptomatic cases and not asymptomatic cases, then we would also need account for asymptomatic cases.
+
+If detection rate $q$ does not reflect $a$, the proportion of cases asymptomatic, then 
+the $q$ should me multiplied by $1-a$ to obtain a true detection rate.
+
+This would give
+
+$$
+I_u = cI_d \left( \frac{1}{q(1-a)} - 1 \right)
+$$
+
+```{r}
+database <- database %>% 
+  mutate(I_u = c * I_d * ((1/(q * (1-a)))-1)) %>% 
+  mutate(I = I_u + I_d)
+
+p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'newly confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~symptomatic, 
+                    name = 'symptom onset (detected)', mode = 'lines',
+                    line = list(color = col.symptomatic, width=1)) %>% 
+  plotly::add_trace(y = ~I_d, 
+                    name = 'I (detected)', mode = 'lines',
+                    line = list(color = col.I_d, width=2)) %>% 
+  plotly::add_trace(y = ~I_u, 
+                    name = 'I (undetected)', mode = 'lines',
+                    line = list(color = col.I_u, width=2, dash="dot")) %>% 
+  plotly::add_trace(y = ~I, 
+                    name = 'I', mode = 'lines',
+                    line = list(color = col.I, width=4))
+  
+p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+```
+
+
+### Deconvolution of symptom onset curve to estimate exposure curve
+
+Now we have a rough estimate of the number of people infectious each day. 
+
+Next, we perform a deconvolution of the symptom onset curve $I_s(t)$ to estimate the number of people exposed each day. We estimate the exposure curve 20 times and calculate a 95% confidence interval. 
+
+Deconvolution produces a time series of equal length to the original time series. However, the incubation period introduces an edge effect at the end of the time series. The incubation period is a gamma distribution with mean 5.6 days and shape parameter 6.2.  
+
+We therefore discard the last 10 days of the exposure curve before the present (1 incubation period plus 2 standard deviations).
+
+```{r, echo=TRUE, message = FALSE, warning = FALSE}
+
+# standard model inputs
+incubation.params <- c(incubation.mean,incubation.sd)
+# parms <- incubation.params
+
+# # OLD STANRD MODEL INPUTS
+# shape=6.2
+# mean=5.6
+# scale=mean/shape
+# sd=sqrt(shape*scale^2)
+# 
+# parms <- c(mean,sd)
+# distribution <- "gamma"
+
+# number of days at end of exposed time series to throw out
+na.tail <- round(incubation.mean+incubation.sd*2) 
+
+
+# perform deconvolution, return list of raw results (tail of each estimate is invalid)
+exposure <- deconvolve_single_curve(database$symptomatic, incubation.params)
+
+# Replace tail of each estimate with NA's and store in database
+database$exposure.mean <- tail_na(exposure$random,na.tail)
+database$exposure.estimates <- as_tibble(tail_na(exposure$random_estimates,na.tail),
+                                        .name_repair = 'universal'
+                                        )
+
+ci <- rowwise_confidence_intervals(database$exposure.estimates,interval=.95)
+database$exposure.lower95 <- ci$lower
+database$exposure.upper95 <- ci$upper
+
+### plot
+
+p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'newly confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~symptomatic, 
+                    name = 'symptom onset (detected)', mode = 'lines',
+                    line = list(color = col.symptomatic, width=1)) %>% 
+  plotly::add_trace(y = ~exposure.mean, 
+                    name = 'exposure (detected, mean)', mode = 'lines',
+                    line = list(color = col.exposed, width=1)) %>% 
+  plotly::add_ribbons(ymin = ~exposure.lower95, ymax = ~exposure.upper95,
+                      name = 'exposure 95% confidence', mode='lines',
+                      line = list(color = col.exposed, width=.5),
+                      fillcolor = col.exposed.ci
+                      )
+  
+p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+
+```
+
+### Time series of Exposed detected individuals $E_d(t)$
+
+```{r}
+database <- database %>% 
+  mutate(E_d.mean = zoo::rollapply(database$exposure.mean, 
+                                   width = incubation.mean, 
+                                   FUN = sum, partial = TRUE, align = "right")) %>% 
+  mutate(E_d.lower95 = zoo::rollapply(database$exposure.lower95, 
+                                   width = incubation.mean, 
+                                   FUN = sum, partial = TRUE, align = "right")) %>% 
+  mutate(E_d.upper95 = zoo::rollapply(database$exposure.upper95, 
+                                   width = incubation.mean, 
+                                   FUN = sum, partial = TRUE, align = "right"))
+
+p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'newly confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~symptomatic, 
+                    name = 'symptom onset (detected)', mode = 'lines',
+                    line = list(color = col.symptomatic, width=1)) %>% 
+  plotly::add_trace(y = ~exposure.mean, 
+                    name = 'exposure (detected, mean)', mode = 'lines',
+                    line = list(color = col.exposed, width=1)) %>% 
+  # plotly::add_ribbons(ymin = ~exposure.lower95, ymax = ~exposure.upper95,
+  #                     name = 'exposure 95% confidence', mode='lines',
+  #                     line = list(color = col.exposed, width=.5),
+  #                     fillcolor = col.exposed.ci
+  #                     ) %>% 
+  plotly::add_trace(y = ~E_d.mean, 
+                    name = 'E (detected, mean)', mode = 'lines',
+                    line = list(color = col.exposed, width=2)) %>% 
+  plotly::add_ribbons(ymin = ~E_d.lower95, ymax = ~E_d.upper95,
+                      name = 'E (detected, 95% confidence)', mode='lines',
+                      line = list(color = col.exposed, width=.5),
+                      fillcolor = col.exposed.ci
+                      )
+  
+p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+
+```
+
+### Accounting for undetected Exposed cases
+
+Assuming again, that detection rate $q$ does not reflect the proportion of cases asymptomatic $a$, then the number of undetected Exposed cases $E_u$ is calculated as follows:
+
+$$
+E_u = E_d \left( \frac{1}{q(1-a)} - 1 \right)
+$$
+
+
+```{r}
+database <- database %>% 
+  mutate(E_u.mean = E_d.mean * ((1/(q * (1 - a))) - 1)) %>% 
+  mutate(E.mean = E_u.mean + E_d.mean) %>% 
+  mutate(E_u.lower95 = E_d.lower95 * ((1/(q * (1 - a))) - 1)) %>% 
+  mutate(E.lower95 = E_u.lower95 + E_d.lower95) %>% 
+  mutate(E_u.upper95 = E_d.upper95 * ((1/(q * (1 - a))) - 1)) %>% 
+  mutate(E.upper95 = E_u.upper95 + E_d.upper95)
+
+p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'newly confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~symptomatic, 
+                    name = 'symptom onset (detected)', mode = 'lines',
+                    line = list(color = col.symptomatic, width=1)) %>% 
+  plotly::add_trace(y = ~exposure.mean, 
+                    name = 'exposure (detected, mean)', mode = 'lines',
+                    line = list(color = col.exposed, width=1)) %>% 
+  plotly::add_trace(y = ~E_d.mean, 
+                    name = 'E (detected, mean)', mode = 'lines',
+                    line = list(color = col.E_d, width=2)) %>% 
+  plotly::add_trace(y = ~E_u.mean, 
+                    name = 'E (undetected, mean)', mode = 'lines',
+                    line = list(color = col.E_u, width=2, dash="dot")) %>%
+  plotly::add_trace(y = ~E.mean, 
+                    name = 'E (mean)', mode = 'lines',
+                    line = list(color = col.E, width=2)) %>%
+  plotly::add_ribbons(ymin = ~E.lower95, ymax = ~E.upper95,
+                      name = 'E 95% confidence', mode='lines',
+                      line = list(color = col.exposed, width=.5),
+                      fillcolor = col.exposed.ci
+                      )
+  
+  
+
+
+p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+```
+
+## Fit the exposed curve $E$ and forecast
+
+```{r, echo=TRUE, message = FALSE, warning = FALSE}
+
+lag <- 1
+
+exposed.model.tvar <- tvReg::tvAR(trim_na(database$E.mean), 
+                          p = lag,  # number of lags
+                          type = "none",  # model does not contain intercept
+                          est="ll", # "local linear" non parametric estimation method
+                          tkernel = "Gaussian")
+
+# forecast 10 days forward
+exposed.forecast <- forecast::forecast(exposed.model.tvar$fitted,na.tail) 
+
+database$E.fit <- exposed.model.tvar$fitted %>% pad_na(lag, front = TRUE) %>% pad_na(na.tail)
+
+database$E.fcast.mean <- exposed.forecast$mean %>% pmax(0) %>% 
+  pad_na(timespan - na.tail, front = TRUE)
+database$E.fcast.upper95 <- exposed.forecast$upper[,'95%'] %>% pmax(0) %>%
+  pad_na(timespan - na.tail, front = TRUE)
+database$E.fcast.lower95 <- exposed.forecast$lower[,'95%'] %>% pmax(0) %>%
+  pad_na(timespan - na.tail, front = TRUE)
+
+### Plot
+
+p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~symptomatic, 
+                    name = 'symptom onset (detected)', mode = 'lines',
+                    line = list(color = col.symptomatic, width=1)) %>% 
+  plotly::add_trace(y = ~exposure.mean, 
+                    name = 'exposure (detected, mean)', mode = 'lines',
+                    line = list(color = col.exposed, width=1)) %>% 
+  plotly::add_trace(y = ~E.mean, 
+                    name = 'E (mean)', mode = 'lines',
+                    line = list(color = col.exposed, width = 2)) %>%  
+  plotly::add_trace(y = ~E.fit, 
+                    name = 'E (fitted)', mode = 'lines',
+                    line = list(color = col.exposed, width = 1, dash = 'dot')) %>% 
+  plotly::add_trace(y = ~E.fcast.mean, 
+                    name = 'E (forecast mean)', mode = 'lines',
+                    line = list(color = col.E, dash = 'dot')) %>% 
+  plotly::add_ribbons(ymin = ~E.fcast.lower95, ymax = ~E.fcast.upper95,
+                      name = 'E (forecast 95% confidence)', mode='lines',
+                      line = list(color = col.E, width = .5),
+                      fillcolor = col.exposed.ci
+                      )
+  
+p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+```
+
+
+## Estimate outbreak size
+
+The mean esimated outbreak size $Q(t)$ at each time $t$ is the sum of the Infectious curve $I(t)$ and either the mean estimated exposed curve $E(t)$ or mean forcested exposed curve.
+
+For now, upper and lower 95% confidence for the esimated outbreak size at each time $t$ is simply the sum of $I$ and the upper and lower 95% confidence for the $E$, or the forecast of $E$ curve.
+
+Do we need to handle confidence intervals differently?  Should we do residual resampling?
+
+```{r, echo=TRUE, message = FALSE, warning = FALSE}
+
+database <- database %>% 
+  mutate(nowcast.mean = rowSums(
+    dplyr::select(., I, E.mean, E.fcast.mean), na.rm = TRUE)
+    ) %>% 
+  mutate(nowcast.upper95 = rowSums(
+    dplyr::select(., I, E.upper95, E.fcast.upper95), na.rm = TRUE)
+    ) %>% 
+  mutate(nowcast.lower95 = rowSums(
+    dplyr::select(., I, E.lower95, E.fcast.lower95), na.rm = TRUE)
+    )
+
+# plot
+
+
+p_nowcast <- plotly::plot_ly(data = database, x = ~Date , y = ~cases, type = 'scatter',
+                             name = 'confirmed', mode = 'lines',
+                             line = list(color = col.cases)
+                             ) %>% 
+  plotly::add_trace(y = ~I, 
+                    name = 'I', mode = 'lines',
+                    line = list(color = col.symptomatic, width = 2)) %>%
+  plotly::add_trace(y = ~E.mean, 
+                    name = 'E (mean)', mode = 'lines',
+                    line = list(color = col.exposed, width = 2)) %>%  
+  plotly::add_trace(y = ~E.fit, 
+                    name = 'E (fitted)', mode = 'lines',
+                    line = list(color = col.exposed, width = 1, dash = 'dot')) %>% 
+  plotly::add_trace(y = ~E.fcast.mean, 
+                    name = 'E (forecast mean)', mode = 'lines',
+                    line = list(color = col.E, dash = 'dot')) %>% 
+  plotly::add_ribbons(ymin = ~E.fcast.lower95, ymax = ~E.fcast.upper95,
+                      name = 'E (forecast 95% confidence)', mode='lines',
+                      line = list(color = col.E, width = .5),
+                      fillcolor = col.exposed.ci) %>% 
+  plotly::add_trace(y = ~nowcast.mean, 
+                    name = 'nowcast (mean)', mode = 'lines',
+                    line = list(color = col.fcast, width = 2, dash = 'dot')) %>% 
+  plotly::add_ribbons(ymin = ~nowcast.lower95, ymax = ~nowcast.upper95,
+                      name = 'nowcast (95% confidence)', mode='lines',
+                      line = list(color = col.fcast, width = .5),
+                      fillcolor = col.fcast.ci
+                      )
+  
+p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+p_nowcast_logy
+
+```
+
+## Estimating the Effective Reproduction Number $R_{eff}$
+
+### Method 1 (not completely correct)
+
+We can estimate $R(t)$ by using the ODEs for the SEIR model, and estimating the slope of $E$ ($\frac{dE}{dt}$).
+
+$$
+\frac{dE}{dt} = \beta S I - \sigma E \\
+R(t) = \frac{\beta S I}{\gamma} \\
+\beta S I = \frac{dE}{dt}+ \sigma E  \\
+R(t) = \frac{\frac{dE}{dt}+ \sigma E}{\gamma} \\
+R_{t} = \frac{\left(\frac{dE}{dt}\right)_t + \sigma E_t}{\gamma_t}
+
+$$
+
+To estimate $\frac{dE}{dt}$ we take a moving window average of the first difference of $E$.
+
+
+```{r}
+
+# Slope of E
+slope.bw <- 7 # must be positive integer > 1
+slope.samples <- as.list(seq(-slope.bw+1,slope.bw,1))
+
+database$E.mean.diff <- c(NA,diff(database$E.mean))
+database$E.lower95.diff <- c(NA,diff(database$E.lower95))
+database$E.upper95.diff <- c(NA,diff(database$E.upper95))
+
+
+database <- database %>% 
+  mutate(E.mean.slope = zoo::rollapply(database$E.mean.diff, width = slope.samples, 
+                                       FUN = mean, partial = FALSE, fill = NA)
+         ) %>% 
+  mutate(E.lower95.slope = zoo::rollapply(database$E.lower95.diff, width = slope.samples, 
+                                       FUN = mean, partial = FALSE, fill = NA)
+         ) %>% 
+  mutate(E.upper95.slope = zoo::rollapply(database$E.upper95.diff, width = slope.samples, 
+                                       FUN = mean, partial = FALSE, fill = NA)
+         )
+
+# R_eff calculations 
+
+database <- database %>% 
+  mutate(R_eff.mean = (E.mean.slope + sigma)/gamma) %>% 
+  mutate(R_eff.lower95 = (E.lower95.slope + sigma)/gamma) %>% 
+  mutate(R_eff.upper95 = (E.upper95.slope + sigma)/gamma)
+
+
+### plot
+
+p_Reff <- plotly::plot_ly(data = database, x = ~Date , y = ~R_eff.mean, type = 'scatter',
+                             name = 'R effective', mode = 'lines',
+                             line = list(color = 'black', width=2)
+                             )  %>%
+  plotly::layout(shapes = list(
+                   list(type = "line", line = list(color = "pink", width=1, dash = "dot"), 
+                        xref = "x", yref = "y",
+                        x0 = ~min(Date), x1 = ~max(Date), y0 = 1, y1 = 1)
+                   )
+                 )
+
+  # plotly::add_ribbons(ymin = ~R_eff.lower95, ymax = ~R_eff.upper95,
+  #                     name = 'R_effective (95% confidence)', mode='lines',
+  #                     line = list(color = 'lightgrey', width = .5),
+  #                     fillcolor = 'lightgrey'
+  #                     )
+
+p_Reff_logy <- p_Reff %>% 
+  plotly::layout(yaxis = list(type="log", range = c(-2, 2)),
+                 shapes = list(
+                   list(type = "line", line = list(color = "pink", width=1, dash = "dot"), 
+                        xref = "x", yref = "y",
+                        x0 = ~min(Date), x1 = ~max(Date), y0 = 1, y1 = 1)
+                   )
+                 )
+p_nowcast_logy <- p_nowcast %>% plotly::layout(yaxis = list(type = "log", range=c(-.25,5)))
+
+subplots <- list(p_Reff, p_nowcast_logy)
+dash <- plotly::subplot(subplots, nrows = length(subplots), shareX = TRUE, titleY = TRUE) %>%
+  plotly::layout(
+      xaxis = list(
+        spikethickness = 1,
+        spikedash = "dot",
+        spikecolor = "black",
+        spikemode = "across+marker",
+        spikesnap = "cursor"
+      ),
+      yaxis = list(spikethickness = 0)
+    )
+dash
+  
+```
+
+TODO: Find out why R_eff going below zero.  Is the calc right?
+
+### Method 2: 
+
+Use a generalized linear chain trick? - YES
+
+Hurtado, P.J. and A.S. Kirosingh. Generalizations of the ‘Linear Chain Trick’: incorporating more flexible dwell time distributions into mean field ODE models. Journal of Mathematical Biology volume 79, pages1831–1883(2019)
+<https://link.springer.com/article/10.1007%2Fs00285-019-01412-w>
+
+Use delay differential equations? - NO
+
+$$
+\frac{d}{dt}E(t) = \beta S(t)I(t) - \beta S(t-\frac{1}{\sigma})I(t-\frac{1}{\sigma}) \\
+~ \\
+R_{eff} = \frac{\beta S(t)I(t)}{\gamma} \\
+~ \\
+\text{Solve for }\beta S(t)I(t) :\\
+\beta S(t)I(t) = ? \\
+~ \\
+* \beta S I = \frac{dE}{dt}+ \sigma E  \\
+* R_{eff} = \frac{\frac{dE}{dt}+ \sigma E}{\gamma} \\
+$$
+

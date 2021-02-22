@@ -13,60 +13,61 @@ library(tibbletime)
 library(padr)
 library(tvReg)
 library(forecast)
-source('R/package.R')
-source('R/deconcolve.R')
-source('R/simple_tdar.R')
-source('R/package_tv.R')
-source('R/nowcast.R')
+library(here)
+source(here::here('R/package.R'))
+source(here::here('R/deconcolve.R'))
+source(here::here('R/simple_tdar.R'))
+source(here::here('R/package_tv.R'))
+source(here::here('R/nowcast.R'))
 
 ```
 
 <!-- Get simultations for US states -->
 ```{r data, include=FALSE, message = FALSE, warning = FALSE, cache = FALSE}
 
-US.sim <- read_csv("nowcast-validation-1.csv") %>% 
+US.sim <- read_csv(here::here("data/nowcast-validation-1.csv")) %>% 
   rename(Date = X1) %>% 
   mutate(Date = as.Date("2019-11-30") + Date) %>% 
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date)
 
-US.sim2 <- read_csv("nowcast-validation-2.csv") %>% 
+US.sim2 <- read_csv(here::here("data/nowcast-validation-2.csv")) %>% 
   rename(Date = X1) %>% 
   mutate(Date = as.Date("2019-11-30") + Date) %>% 
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date)
 
-US.sim3 <- read_csv("nowcast-validation-3.csv") %>% 
+US.sim3 <- read_csv(here::here("data/nowcast-validation-3.csv")) %>% 
   rename(Date = X1) %>% 
   mutate(Date = as.Date("2019-11-30") + Date) %>% 
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date)
 
-US.sim4 <- read_csv("nowcast-validation-4.csv") %>% 
+US.sim4 <- read_csv(here::here("data/nowcast-validation-4.csv")) %>% 
   rename(Date = X1) %>% 
   mutate(Date = as.Date("2019-11-30") + Date) %>% 
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date)
 
-US.sim5 <- read_csv("nowcast-validation-5.csv") %>% 
+US.sim5 <- read_csv(here::here("data/nowcast-validation-5.csv")) %>% 
   rename(Date = X1) %>% 
   mutate(Date = as.Date("2019-11-30") + Date) %>% 
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date)
 
-US.sim5b <- read_csv("nowcast-validation-Scenario-5.csv") %>% 
+US.sim5b <- read_csv(here::here("data/nowcast-validation-Scenario-5.csv")) %>% 
   rename(Date = X1) %>% 
   mutate(Date = as.Date("2019-11-30") + Date) %>% 
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date)
 
-US.sim6 <- read_csv("nowcast-validation-Scenario-6.csv") %>% 
+US.sim6 <- read_csv(here::here("data/nowcast-validation-Scenario-6.csv")) %>% 
   rename(Date = X1) %>% 
   mutate(Date = as.Date("2019-11-30") + Date) %>% 
   replace(., is.na(.), 0) %>%
   tibbletime::as_tbl_time(index=Date)
 
-US.sim7 <- read_csv("nowcast-validation-Scenario-7.csv") %>% 
+US.sim7 <- read_csv(here::here("data/nowcast-validation-Scenario-7.csv")) %>% 
   rename(Date = X1) %>% 
   mutate(Date = as.Date("2019-11-30") + Date) %>% 
   replace(., is.na(.), 0) %>%

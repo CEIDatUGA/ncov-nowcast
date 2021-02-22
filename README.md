@@ -1,46 +1,64 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# ncov-nowcast
+ncov-nowcast
+============
 
 <!-- badges: start -->
-
 <!-- badges: end -->
 
-Contact: Eric Marty (<emarty@uga.edu>)
+Contact: Eric Marty
+(<a href="mailto:emarty@uga.edu" class="email">emarty@uga.edu</a>)
 
 Contributors:  
-Tim Wildauer (<twildauer@blc.edu>) - deconvolution John Drake
-(<jdrake@uga.edu>)  
-Eric Marty (<emarty@uga.edu>) - visualization, nowcast architecture
-Rachel Mercaldo (<mercaldo@uga.edu>) - forecasting
+John M. Drake
+(<a href="mailto:jdrake@uga.edu" class="email">jdrake@uga.edu</a>)  
+Éric Marty
+(<a href="mailto:emarty@uga.edu" class="email">emarty@uga.edu</a>) -
+visualization, nowcast architecture  
+Rachel Mercaldo
+(<a href="mailto:mercaldo@uga.edu" class="email">mercaldo@uga.edu</a>) -
+forecasting  
+Austin M. Smith
+(<a href="mailto:amsmith11@usf.edu" class="email">amsmith11@usf.edu</a>)
+- analysis  
+Andrew M. Kramer
+(<a href="mailto:amkramer@usf.edu" class="email">amkramer@usf.edu</a>)  
+Tim Wildauer
+(<a href="mailto:twildauer@blc.edu" class="email">twildauer@blc.edu</a>)
+- deconvolution
 
-## Contributing
+Contributing
+------------
 
-  - Code for functions should go in scripts in the R/ folder.
-  - High level scripts or Rmd documents should go at the top level.
-  - Temporary data products are in the /data folder.
-  - Source data is pulled directly from wikipedia or from
-    <https://github.com/CEIDatUGA/COVID-19-DATA>
+-   Code for functions is in the `R/` folder.
+-   High level scripts or Rmd documents are found at the top level.
+-   Temporary data products are in the `/data` folder.
+-   Nowcast outputs are in the `/data/output` folder.
+-   Source data for US nowcasts are maintained at
+    <a href="https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/US/US_wikipedia_cases_fatalities/" class="uri">https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/US/US_wikipedia_cases_fatalities/</a>
 
-## Objective
+Objective
+---------
 
 Estimate the current size of the epidemic.
 
-## Rationale
+Rationale
+---------
 
 A key problem in making management decisions is estimating the size of
 the epidemic. This project aims to estimate the size of the unknown
 epidemic. Case notifications are a poor indicator of epidemic size for
 several reasons.
 
-  - Case notifications are incomplete (there is under-reporting).
-  - Case notifications are primarily associated with patient isolation
+-   Case notifications are incomplete (there is under-reporting).
+-   Case notifications are primarily associated with patient isolation
     and therefore are not contributing greatly to transmission.
-  - 2019-nCov has a significant incubation period. These presymptomatic
+-   SARS-CoV-2 has a significant incubation period. These presymptomatic
     cases are also part of the epidemic.
 
-## Strategy
+Strategy
+--------
 
 This project will use a non-parametric approach to deconvolving the case
 notification record to construct the actual size of the epidemic as it
