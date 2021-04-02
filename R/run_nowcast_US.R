@@ -3,19 +3,28 @@ library(tidyverse)
 source('R/nowcast.R')
 source('R/data.R')
 
-get_nowcast <- function(admin, cases, fatalities, params, samplesize = 1.0) {
+# Cores
+# Set number of cores used for nowcast to 4 less than number of cores on system, and no less than one.
+assign("nowcast_cores", max(1,detectCores()-4L), envir = .GlobalEnv)
+
+
+# Helper functions ----------------------------------------------------------------------------
+
+get_nowcast <- function(admin, cases, fatalities, params, samplesize, chunksize) {
   cat(as.character(Sys.time()), "###### Starting nowcast for", admin, "\n") # for debugging
   nowcast <- cases %>% select(Date, cases = admin) %>% 
-    tbl_time(index = Date) %>% nowcast_from_case_reports(params)
-  
+    tbl_time(index = Date) %>% 
+    nowcast_from_case_reports(params=params, samplesize = samplesize)
+
   nowcast$deaths <- pull(fatalities, admin)
   nowcast$cum.deaths <- cumsum(nowcast$deaths)
   cat(as.character(Sys.time()), "Finished nowcast for", admin, "\n") # for debugging
   return(nowcast)
 }
 
-do_nowcast <- function(admin, cases, fatalities, params, samplesize = 1.0){
-  nowcast <- get_nowcast(admin, cases, fatalities, params, samplesize)
+do_nowcast <- function(admin, cases, fatalities, params, samplesize = 1.0, chunksize = 30){
+  nowcast <- get_nowcast(admin=admin, cases=cases, fatalities=fatalities, params=params, 
+                         samplesize=samplesize, chunksize=chunksize)
   saveRDS(nowcast, paste0("data/output/", admin,".nowcast.from.cases.rds"))
 }
 
@@ -78,7 +87,8 @@ params.US$q <- get_ascertainment(cases.US.all,
                                  fatalities.US.all, 
                                  params.US, 
                                  window = 7, # smoothing window for forecasting 
-                                 samplesize = 0.1  # sample size as fraction of reports
+                                 samplesize = 0.1,  # sample size as fraction of reports
+                                 chunksize = 30 # process in 30 day chunks
                                  )
 saveRDS(params.US,"data/params.US.rds")
 
@@ -96,17 +106,18 @@ saveRDS(params.US,"data/params.US.rds")
 
 # US ----------------------------------------------------------------------
 
-# TEMPORARILY DISABLEING US NOWCAST
-# start.time <- proc.time()
-# do_nowcast(admin = "US", cases = cases.US, fatalities = fatalities.US, params.US, samplesize = 0.05)
-# (proc.time()-start.time)['elapsed']/60
+start.time <- proc.time()
+do_nowcast(admin = "US", cases = cases.US, fatalities = fatalities.US, params.US, 
+           samplesize = 0.05, chunksize = 30)
+(proc.time()-start.time)['elapsed']/60
 
 # states ------------------------------------------------------------------
 
 statesvector <- cases.US %>% select(-Date, -US) %>% names()
 
 for(s in statesvector){
-  do_nowcast(admin = s, cases = cases.US, fatalities = fatalities.US, params.US, samplesize = 1.0)
+  do_nowcast(admin = s, cases = cases.US, fatalities = fatalities.US, params.US, 
+             samplesize = 1.0, chunksize = 30)
   }
 
 elapsed <- round(as.numeric((proc.time() - start.time)[3]))
