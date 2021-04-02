@@ -508,7 +508,7 @@ nowcast_from_case_reports <- function(casereports,
                                       tvar.bandwidth=NULL, 
                                       minimal=FALSE, # calculate E.onset and R effective
                                       samplesize=1.0, # proportion of cases to use in generating linelist
-                                      chunksize=NULL, # rows per chunk.
+                                      chunksize=30, # rows per chunk.
                                       savechunks=FALSE  # save chunk dataframes for debugging
                                       ) {
   database <- casereports
@@ -1008,7 +1008,7 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports,
                                                     tvar.bandwidth=NULL,
                                                     minimal=FALSE, # calculate E.onset and R effective
                                                     samplesize=1.0, # proportion of cases to use in generating linelist
-                                                    chunksize=NULL, # rows per chunk.
+                                                    chunksize=30, # rows per chunk.
                                                     savechunks=FALSE  # save chunk dataframes for debugging
                                                     ) {
   database <- deathreports
