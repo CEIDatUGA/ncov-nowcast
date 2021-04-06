@@ -11,6 +11,18 @@ library(forecast)
 
 # Helper Functions ----------------------------------------------------------------------------
 
+# sample a vector of integers
+## outputs a vector of integers. 
+## Output is similar to multiplying each element of the vector by samplesize, 
+## except that after scaling the fractional portion of the element is treated as a probability
+## and scaled to either 1 or 0 according to the binomial distribution with the given probability.
+sample_vector <- function(data,samplesize=1.0){
+  tempsample <- data*samplesize
+  sample <- floor(tempsample) + rbinom(n=length(data), size=1, prob=tempsample%%1)
+  return(sample)
+}
+
+
 # fix list columns
 fixcolumns <- function(x) {
   if(is.list(x)){
@@ -559,7 +571,8 @@ nowcast_from_case_reports <- function(casereports,
   
 
   # Sample cases
-  sample <- database$cases_over_q * samplesize
+  # sample <- database$cases_over_q * samplesize
+  sample <- sample_vector(data = database$cases_over_q, samplesize = samplesize)
   
   # CHUNK PROCESSING
   
@@ -1022,7 +1035,8 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports,
   database$deaths_over_IFR <- database$deaths / database$IFR
   
   # Sample deaths
-  sample <- database$deaths_over_IFR * samplesize
+  # sample <- database$deaths_over_IFR * samplesize
+  sample <- sample_vector(data = database$deaths_over_IFR, samplesize = samplesize)
   
   
   # CHUNK PROCESSING*******************************************
