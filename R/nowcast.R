@@ -9,11 +9,7 @@ library(forecast)
 # source('R/simple_tdar.R')
 # source('R/package_tv.R')
 
-# Cores
-ncores <- detectCores()-4L
-# ncores <- 5L
-
-# functions
+# Helper Functions ----------------------------------------------------------------------------
 
 # fix list columns
 fixcolumns <- function(x) {
@@ -54,74 +50,18 @@ tail_na <- function(data, tail, columns=NULL) {
   return(d)
 }
 
+# sum rows, keeping NA's
+rowSums_na <- function(x){
+  ifelse(apply(is.na(x),1,all), # if all columns of x == NA 
+         NA,                    # set to NA
+         rowSums(x,na.rm=TRUE)) # else sum columns, treating NA's as 0
+}  
+
 # set infities and NaN's to NA
 
 na_not_finite <- function(x){
   x[!is.finite(x)] <- NA
   return(x)
-}
-
-# get sd of distribution
-
-get_sd <- function(...){
-  interval <- list(...)[[1]]
-
-  if(is.numeric(interval)){
-    if(length(interval) == 1){
-      sd <- 0
-    }else{
-        sd <- sd(interval)
-    }
-    return(sd)
-  }
-
-  if(interval$dist == "exponential") {
-    if(is.null(interval$mean)) {stop("exponential distribution requires a mean")}
-    sd <- sqrt((1/interval$mean)^2)
-    return(sd)
-  }
-  
-  if(interval$dist == "gamma") {
-    if(is.null(interval$mean) | is.null(interval$shape)) {
-      stop("gamma distribution requires mean and shape")
-    }
-    scale <- interval$mean/interval$shape # gamma
-    sd <- sqrt(interval$shape*scale^2) # gamma
-    return(sd)
-  }
-  
-  if(interval$dist == "skewnormal") {
-    if(is.null(interval$mean) | is.null(interval$shape) | is.null(interval$scale)) {
-      stop("skewnormal distribution requires mean, shape and scale to find standard deviation")
-    }
-    delta <- interval$shape / (sqrt(1 + interval$shape^2))
-    variance <- interval$scale^2 * (1 - (2 * delta)/pi )
-    sd <- sqrt(variance)
-    return(sd)
-  }
-
-  if(interval$dist == "lognormal") {
-    if(is.null(interval$sd)) {
-      stop("Standard deviation must be supplied with lognormal distribution.")
-    }
-    return(interval$sd)
-  }
-
-}
-
-# function to calculate confidence intervals across rows of a dataframe
-rowwise_confidence_intervals <- function(df,interval) {
-  out <- list()
-  for (i in 1:nrow(df)) {
-    v <- unlist(df[i,])
-    v_sd <- sd(v)
-    v_n <- length(v)
-    v_mean <- mean(v)
-    error <- qt((interval + 1)/2, df = v_n - 1) * v_sd / sqrt(v_n)
-    out$lower[i] <- v_mean - error
-    out$upper[i] <- v_mean + error
-  }
-  return(out)
 }
 
 # Smoother
@@ -133,7 +73,7 @@ rowwise_confidence_intervals <- function(df,interval) {
 movingAverage <- function(x, window=1, centered=TRUE) {
   
   if (centered) {
-    before <- floor  ((window-1)/2)
+    before <- floor((window-1)/2)
     after  <- ceiling((window-1)/2)
   } else {
     before <- window-1
@@ -182,7 +122,74 @@ movingAverage <- function(x, window=1, centered=TRUE) {
   s/count
 }
 
-# Simulate from time varying distribution
+# Get standard deviation of distribution ------------------------------------------------------
+
+get_sd <- function(...){
+  interval <- list(...)[[1]]
+
+  if(is.numeric(interval)){
+    if(length(interval) == 1){
+      sd <- 0
+    }else{
+        sd <- sd(interval)
+    }
+    return(sd)
+  }
+
+  if(interval$dist == "exponential") {
+    if(is.null(interval$mean)) {stop("exponential distribution requires a mean")}
+    sd <- sqrt((1/interval$mean)^2)
+    return(sd)
+  }
+  
+  if(interval$dist == "gamma") {
+    if(is.null(interval$mean) | is.null(interval$shape)) {
+      stop("gamma distribution requires mean and shape")
+    }
+    scale <- interval$mean/interval$shape # gamma
+    sd <- sqrt(interval$shape*scale^2) # gamma
+    return(sd)
+  }
+  
+  if(interval$dist == "skewnormal") {
+    if(is.null(interval$mean) | is.null(interval$shape) | is.null(interval$scale)) {
+      stop("skewnormal distribution requires mean, shape and scale to find standard deviation")
+    }
+    delta <- interval$shape / (sqrt(1 + interval$shape^2))
+    variance <- interval$scale^2 * (1 - (2 * delta)/pi )
+    sd <- sqrt(variance)
+    return(sd)
+  }
+
+  if(interval$dist == "lognormal") {
+    if(is.null(interval$sd)) {
+      stop("Standard deviation must be supplied with lognormal distribution.")
+    }
+    return(interval$sd)
+  }
+
+}
+
+# Calculate confidence intervals across rows of a dataframe -----------------------------------
+
+rowwise_confidence_intervals <- function(df,interval) {
+  out <- list()
+  for (i in 1:nrow(df)) {
+    v <- unlist(df[i,])
+    v_sd <- sd(v)
+    v_n <- length(v)
+    v_mean <- mean(v)
+    error <- qt((interval + 1)/2, df = v_n - 1) * v_sd / sqrt(v_n)
+    out$lower[i] <- v_mean - error
+    out$upper[i] <- v_mean + error
+  }
+  return(out)
+}
+
+
+
+
+# Simulate linelists from time varying distributions ------------------------------------------
 
 ## Simulate a line list from dates, counts (such as case reports), and interval distribution
 
@@ -226,6 +233,7 @@ backward_simulate_linelist <- function(dates, counts, interval) {
   # intervals <- lapply(input$count, get_intervals, interval) %>% unlist()
 
   # parallel
+  ncores <- get0('nowcast_cores', envir = .GlobalEnv, mode = "any", inherits = TRUE, ifnotfound = 1)
   intervals <- mclapply(input$count, get_intervals, interval, mc.cores = ncores) %>% unlist()
   
   linelist <- input %>% 
@@ -283,39 +291,32 @@ backward_propagate_linelist <- function (linelist, interval) {
   out.linelist
 }
 
-## Get onset curve for range of dates from linelist
+
+# Get onset curve for range of dates from linelist --------------------------------------------
+
+get_chunk_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
+  onset.curve <- linelist %>% 
+    mutate(onset.date = lubridate::floor_date(onset.date,"days")) %>% 
+    count(onset.date) %>% 
+    padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
+  
+  # NA replace
+  onset.curve$n <- replace_na(onset.curve$n, 0)
+  # cat("After na replace, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
+  
+  onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
+
+  return(onset.curve)
+}
+
+## Get onset curve for range of dates from linelist  # DEPRICATED
 
 get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
-  # dates <- range(dates)
   onset.curve <- linelist %>% 
-    mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>% 
+    mutate(onset.date = lubridate::floor_date(onset.date, "days")) %>% 
     count(onset.date) %>% 
     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
   # cat("onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
-  
-  # if(is.numeric(interval)){
-  #   interval <- list(mean=interval[1], sd=0)
-  # }else{
-  #   if(interval$dist == "exponential") {
-  #     interval$sd <- sqrt((1/interval$mean)^2) # exponential
-  #   }
-  #   if(interval$dist == "gamma") {
-  #     interval$scale <- interval$mean/interval$shape # gamma
-  #     interval$sd <- sqrt(interval$shape*interval$scale^2) # gamma
-  #   }
-  #   if(interval$dist == "skewnormal") {
-  #     # if SD provided as a parameter of interval, do nothing
-  #     # if sd not provided, 
-  #     if(is.null(interval$sd)){
-  #       delta <- interval$shape / (sqrt(1 + interval$shape^2))
-  #       variance <- interval$scale^2 * (1 - (2 * delta)/pi )
-  #       interval$sd <- sqrt(variance) 
-  #     }
-  #   }
-  #   if(interval$dist == "lognormal") {
-  #     # Do nothing. sd must be provided
-  #   }
-  # }
   
   interval$sd <- get_sd(interval)
   natail <- interval$mean+interval$sd*2
@@ -336,22 +337,45 @@ get_onset_curve <- function(dates, linelist, interval, next_intervals=NULL) {
   # cat("After tail_na, onset curve nrows = ", nrow(onset.curve), "\n")  # for debugging
   
   onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
-
-  onset.curve
+  
+  return(onset.curve)
 }
+
+
+# Get state curve for range of dates from linelist --------------------------------------------
 
 ## Get value of state at a single "date" from "linelist"
 get_state <- function(date, linelist) {
-  linelist[as.Date(lubridate::floor_date(linelist$onset.date)) <= date
+  linelist[lubridate::floor_date(linelist$onset.date,"days") <= date
            & date < linelist$exit.date,] %>% nrow()
 }
 
 ## Get state curve for range of dates from linelist
+get_chunk_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
+  # serial
+  # values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
+  
+  # parallel
+  ncores <- get0('nowcast_cores', envir = .GlobalEnv, mode = "any", inherits = TRUE, ifnotfound = 1)
+  values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = ncores) %>% unlist
+
+  # NA replace
+  values <- values %>% replace_na(0)
+  
+  chunk.state.curve <- tibble(
+    date = dates, 
+    value = values
+  )
+  chunk.state.curve
+}
+
+## Get state curve for range of dates from linelist  # DEPRICATED
 get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   # serial
   # values <- lapply(X = dates, FUN = get_state, linelist) %>% unlist
   
   # parallel
+  ncores <- get0('nowcast_cores', envir = .GlobalEnv, mode = "any", inherits = TRUE, ifnotfound = 1)
   values <- mclapply(X = dates, FUN = get_state, linelist, mc.cores = ncores) %>% unlist
   # browser() # for dubugging
   # cat("n values = ", length(values), "\n")  # for debugging
@@ -402,7 +426,36 @@ get_state_curve <- function(dates, linelist, interval, next_intervals=NULL){
   state.curve
 }
 
-# forecast to present
+
+
+# Sum curve chunks ----------------------------------------------------------------------------
+
+# Sum curve chunks and set tail to NA, depending on interval(s)
+get_curve_from_chunks <- function(chunks, interval, next_intervals=NULL){
+  
+  values <- rowSums(chunks[,-1], na.rm = TRUE)
+  
+  sd <- get_sd(interval)
+  natail <- interval$mean+sd*2
+  if(!is.null(next_intervals)){
+    for(i in 1:length(next_intervals)){
+      natail <- natail + next_intervals[[i]]$mean+get_sd(next_intervals[[i]])*2
+    }
+  }
+  
+  # set last several values to NA
+  values <- tail_na(values, round(natail))
+  # cat("after na_tail, n values = ", length(values), "\n")  # for debugging
+  
+  curve <- tibble(
+    date = chunks$date, 
+    value = values
+  )
+  return(curve)
+}
+
+
+# Forecast to present -------------------------------------------------------------------------
 
 tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
   curve.trimmed <- trim_na(curve)
@@ -445,51 +498,23 @@ tvar_forecast_to_present <- function(curve,lag=1,bw=NULL) {
   forecast
 }
 
-### START HERE
-# get R_effective
-# burnin <- get_sd(interval)*2
-# get_R_eff <- function(dates,E.onset.curve,I.state,gamma) {
-#   R_effective <- E.onset.curve/(I.state*gamma)
-# }
 
 
-# get_R_eff <- function(database, burnin = 0) {
-#   # dates <- range(dates)
-#   onset.curve <- linelist %>%
-#     mutate(onset.date = as.Date(lubridate::floor_date(onset.date))) %>%
-#     count(onset.date) %>%
-#     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
-# 
-#   interval$sd <- get_sd(interval)
-#   natail <- interval$mean+interval$sd*2
-#   if(!is.null(next_intervals)){
-#     for(i in 1:length(next_intervals)){
-#       next_intervals[[i]]$sd <- get_sd(next_intervals[[i]])
-#       natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
-#     }
-#   }
-# 
-#   # NA replace
-#   onset.curve$n <- replace_na(onset.curve$n, 0)
-# 
-#   # set last several values to NA
-#   onset.curve$n <- tail_na(onset.curve$n,round(natail))
-# 
-#   onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
-# 
-#   onset.curve
-# }
-### END HERE
+# Nowcast from case reports -------------------------------------------------------------------
 
 
-# nowcast from case reports
-
-nowcast_from_case_reports <- function(casereports, params, 
+nowcast_from_case_reports <- function(casereports, 
+                                      params, 
                                       tvar.bandwidth=NULL, 
-                                      minimal=FALSE,
-                                      samplesize=1.0 # proportion of cases to use in generating linelist
+                                      minimal=FALSE, # calculate E.onset and R effective
+                                      samplesize=1.0, # proportion of cases to use in generating linelist
+                                      chunksize=30, # rows per chunk.
+                                      savechunks=FALSE  # save chunk dataframes for debugging
                                       ) {
   database <- casereports
+  if(is.null(chunksize)) {
+    chunksize <- nrow(database)
+    }
   
   # Ascertainment
   if(is.null(params$q)){
@@ -522,7 +547,6 @@ nowcast_from_case_reports <- function(casereports, params,
   # database$a <- params$a # no longer used
   # database$c <- params$c # no longer used
   
-  
   # Compensate for ascertainment (q)
   database$cases_over_q <- database$cases / database$q
   
@@ -533,164 +557,262 @@ nowcast_from_case_reports <- function(casereports, params,
   # }
   # 
   
-  # I linelist
-  cat("Simulating I linelist...\n") # for debugging
 
+  # Sample cases
   sample <- database$cases_over_q * samplesize
   
-  # I linelist for sample of cases
-  I.linelist <- backward_simulate_linelist(dates = database$Date,
-                                           counts = sample,
-                                           interval = params$effective.infectious.period)
-  cat("Done simulating I linelist.\n")  # for debugging
-  # print(head(I.linelist)) # for debugging
-  # print(tail(I.linelist)) # for debugging
-  # Not using upper and lower estimates of q
-  # if(is.list(params$q)) {
-  #   # I linelist.upper
-  #   I.linelist.upper <- backward_simulate_linelist(dates = database$Date,
-  #                                            counts = database$cases_over_q.upper,
-  #                                            interval = params$effective.infectious.period)
-  #   
-  #   # I linelist.lower
-  #   I.linelist.lower <- backward_simulate_linelist(dates = database$Date,
-  #                                                  counts = database$cases_over_q.lower,
-  #                                                  interval = params$effective.infectious.period)
-  # }
- 
+  # CHUNK PROCESSING
   
-  # # I onset
-  # I.onset <- get_onset_curve(dates = database$Date,
-  #                            linelist = I.linelist,
-  #                            interval = params$effective.infectious.period)
-  # database$I.onset <- I.onset$n
+  nchunks <- ceiling(nrow(database)/chunksize)
+  I <- E <- E.onset <- tibble(date=database$Date)  # init curves
+  date.chunks <- split(database$Date, ceiling(seq_along(database$Date)/chunksize))
+  sample.chunks <- split(sample, ceiling(seq_along(sample)/chunksize))
+  
+  for (i in 1:(nchunks)) {
+    cat(paste("Processing chunk", i, "...\n")) # for debugging
+    
+    # offset = (i-1) * chunksize
+    dates <- date.chunks[[i]]
+    counts <- sample.chunks[[i]]
+    
+    if(sum(counts, na.rm = TRUE) > 0) {  
+      # I linelist for sample of cases for chunk
+      chunk.I.linelist <- backward_simulate_linelist(dates = dates,
+                                               counts = counts,
+                                               interval = params$effective.infectious.period)
+      # E linelist for sample of cases for chunk
+      chunk.E.linelist <- backward_propagate_linelist(chunk.I.linelist,
+                                                      interval = params$incubation.period)
+      
+      # I for sample of cases for chunk
+      chunk.I.date.min <- lubridate::floor_date(min(chunk.I.linelist$onset.date),"days")
+      chunk.I.dates <- seq(chunk.I.date.min, max(database$Date), 1)
+      chunk.I <- get_chunk_state_curve(dates = chunk.I.dates,
+                                 linelist = chunk.I.linelist,
+                                 interval = params$effective.infectious.period)
+      names(chunk.I)[2] <- paste0("chunk",i)
+      I <- full_join(I,chunk.I,by="date")
+      
+      # E for sample of cases for chunk
+      chunk.E.date.min <- lubridate::floor_date(min(chunk.E.linelist$onset.date),"days")
+      chunk.E.dates <- seq(chunk.E.date.min, max(database$Date), 1)
+      chunk.E <- get_chunk_state_curve(dates = chunk.E.dates,
+                           linelist = chunk.E.linelist,
+                           interval = params$incubation.period,
+                           next_intervals = list(params$effective.infectious.period))
+      names(chunk.E)[2] <- paste0("chunk",i)
+      E <- full_join(E,chunk.E,by="date")
+      
+      # E onset for sample of cases for chunk
+      if(minimal == FALSE){
+        # cat("Getting Exposure onset curve... \n")
+        chunk.E.onset <- get_chunk_onset_curve(dates = chunk.E.dates,
+                                   linelist = chunk.E.linelist,
+                                   interval = params$incubation.period,
+                                   next_intervals = list(params$effective.infectious.period))
+        names(chunk.E.onset)[2] <- paste0("chunk",i)
+        E.onset <- full_join(E.onset,chunk.E.onset,by="date")
+      }else{
+        E.onset[paste0("chunk",i)] <- NA
+      }
+    }else{
+      I[paste0("chunk",i)] <- NA
+      E[paste0("chunk",i)] <- NA
+      E.onset[paste0("chunk",i)] <- NA
+    }
+  }  # end for loop
+  
+  # Sum chunks
+  I$value <- get_curve_from_chunks(I, 
+                                   interval = params$effective.infectious.period
+                                   )$value
+  E$value <- get_curve_from_chunks(E, 
+                                   interval = params$incubation.period,
+                                   next_intervals = list(params$effective.infectious.period)
+                                   )$value
+  E.onset$value <- get_curve_from_chunks(E.onset, 
+                                         interval = params$incubation.period,
+                                         next_intervals = list(params$effective.infectious.period)
+                                         )$value
 
-  # # I (detected)
-  # I_d <- get_state_curve(dates = database$Date,
-  #                        linelist = I.linelist,
-  #                        interval = params$effective.infectious.period)
-  # database$I_d <- I_d$value
-  # 
-  # # I
-  # database <- database %>% mutate(I = I_d/q,
-  #                                 I.upper = I_d/q.lower,
-  #                                 I.lower = I_d/q.upper)
-  
-  # I
-  cat("Getting state curve for I...\n") # for debugging
-  I <- get_state_curve(dates = database$Date,
-                         linelist = I.linelist,
-                         interval = params$effective.infectious.period)
-  cat("Done getting state curve for I.\n")  # for debugging
-  # print(head(I)) # for debugging
-  # print(tail(I)) # for debugging
-  # cat("I curve date range:", range(I$date), "\n") # for debugging
-  # cat("I curve nrows:", nrow(I), "\n") # for debugging
+  # Rescale curves and store in database
   database$I <- I$value / samplesize
-
-  # Not using upper and lower estimates of q
-  # # I.upper
-  # if(is.list(params$q)){
-  #   I.upper <- get_state_curve(dates = database$Date,
-  #                              linelist = I.linelist.upper,
-  #                              interval = params$effective.infectious.period)
-  #   database$I.upper <- I.upper$value
-  # }else{
-  #   database$I.upper <-  database$I
-  # }
-  # 
-  # # I.lower
-  # if(is.list(params$q)){
-  #   I.lower <- get_state_curve(dates = database$Date,
-  #                              linelist = I.linelist.lower,
-  #                              interval = params$effective.infectious.period)
-  #   database$I.lower <- I.lower$value
-  # }else{
-  #   database$I.lower <-  database$I
-  # }
-  
-  # E linelist for sample of cases
-  cat("Back propagating linelist to Exposures...\n") # for debugging
-  E.linelist <- backward_propagate_linelist(I.linelist,
-                                            interval = params$incubation.period)
-  cat("Done back propagating linelist.\n")  # for debugging
-  # print(head(E.linelist)) # for debugging
-  # print(tail(E.linelist)) # for debugging
-  
-  # Not using upper and lower estimates of q
-  # if(is.list(params$q)){
-  #   # E linelist.upper
-  #   E.linelist.upper <- backward_propagate_linelist(I.linelist.upper,
-  #                                             interval = params$incubation.period)
-  # 
-  #   # E linelist.lower
-  #   E.linelist.lower <- backward_propagate_linelist(I.linelist.lower,
-  #                                             interval = params$incubation.period)
-  # }
-  
-  # E onset
-  if(minimal == FALSE){
-    cat("Getting Exposure onset curve... \n")
-    E.onset <- get_onset_curve(dates = database$Date,
-                               linelist = E.linelist,
-                               interval = params$incubation.period,
-                               next_intervals = list(params$effective.infectious.period))
-
+  database$E <- E$value / samplesize
+  if(minimal==FALSE) {
     database$E.onset <- E.onset$value / samplesize
-    cat("Done getting Exposure onset curve. \n")
-    # print(head(E.onset)) # for debugging
-    # print(tail(E.onset)) # for debugging
-    # cat("E onset curve date range:", range(E.onset$date), "\n")  # for debugging
-    # cat("E onset curve nrows:", nrow(E.onset), "\n")  # for debugging
+  }else{
+    database$E.onset <- NA
   }
   
-  # # E (detected)
-  # E_d <- get_state_curve(dates = database$Date,
-  #                        linelist = E.linelist,
-  #                        interval = params$incubation.period)
-  # database$E_d <- E_d$value
+  
+  # END CHUNK PROCESSING
+  
+  
+  # # NON-CHUNK PROCESSING
+  # 
+  # # I linelist for sample of cases
+  # I.linelist <- backward_simulate_linelist(dates = database$Date,
+  #                                          counts = sample,
+  #                                          interval = params$effective.infectious.period)
+  # cat("Done simulating I linelist.\n")  # for debugging
+  # # print(head(I.linelist)) # for debugging
+  # # print(tail(I.linelist)) # for debugging
+  # # Not using upper and lower estimates of q
+  # # if(is.list(params$q)) {
+  # #   # I linelist.upper
+  # #   I.linelist.upper <- backward_simulate_linelist(dates = database$Date,
+  # #                                            counts = database$cases_over_q.upper,
+  # #                                            interval = params$effective.infectious.period)
+  # #
+  # #   # I linelist.lower
+  # #   I.linelist.lower <- backward_simulate_linelist(dates = database$Date,
+  # #                                                  counts = database$cases_over_q.lower,
+  # #                                                  interval = params$effective.infectious.period)
+  # # }
+  # 
+  # # # I onset
+  # # I.onset <- get_onset_curve(dates = database$Date,
+  # #                            linelist = I.linelist,
+  # #                            interval = params$effective.infectious.period)
+  # # database$I.onset <- I.onset$n
+  # 
+  # # # I (detected)
+  # # I_d <- get_state_curve(dates = database$Date,
+  # #                        linelist = I.linelist,
+  # #                        interval = params$effective.infectious.period)
+  # # database$I_d <- I_d$value
+  # #
+  # # # I
+  # # database <- database %>% mutate(I = I_d/q,
+  # #                                 I.upper = I_d/q.lower,
+  # #                                 I.lower = I_d/q.upper)
+  # 
+  # # I
+  # cat("Getting state curve for I...\n") # for debugging
+  # I <- get_state_curve(dates = database$Date,
+  #                        linelist = I.linelist,
+  #                        interval = params$effective.infectious.period)
+  # cat("Done getting state curve for I.\n")  # for debugging
+  # # print(head(I)) # for debugging
+  # # print(tail(I)) # for debugging
+  # # cat("I curve date range:", range(I$date), "\n") # for debugging
+  # # cat("I curve nrows:", nrow(I), "\n") # for debugging
+  # 
+  # 
+  # 
+  # 
+  # 
+  # 
+  # 
+  # database$I <- I$value / samplesize
+  # 
+  # # Not using upper and lower estimates of q
+  # # # I.upper
+  # # if(is.list(params$q)){
+  # #   I.upper <- get_state_curve(dates = database$Date,
+  # #                              linelist = I.linelist.upper,
+  # #                              interval = params$effective.infectious.period)
+  # #   database$I.upper <- I.upper$value
+  # # }else{
+  # #   database$I.upper <-  database$I
+  # # }
+  # #
+  # # # I.lower
+  # # if(is.list(params$q)){
+  # #   I.lower <- get_state_curve(dates = database$Date,
+  # #                              linelist = I.linelist.lower,
+  # #                              interval = params$effective.infectious.period)
+  # #   database$I.lower <- I.lower$value
+  # # }else{
+  # #   database$I.lower <-  database$I
+  # # }
+  # 
+  # # E linelist for sample of cases
+  # cat("Back propagating linelist to Exposures...\n") # for debugging
+  # E.linelist <- backward_propagate_linelist(I.linelist,
+  #                                           interval = params$incubation.period)
+  # cat("Done back propagating linelist.\n")  # for debugging
+  # # print(head(E.linelist)) # for debugging
+  # # print(tail(E.linelist)) # for debugging
+  # 
+  # # Not using upper and lower estimates of q
+  # # if(is.list(params$q)){
+  # #   # E linelist.upper
+  # #   E.linelist.upper <- backward_propagate_linelist(I.linelist.upper,
+  # #                                             interval = params$incubation.period)
+  # #
+  # #   # E linelist.lower
+  # #   E.linelist.lower <- backward_propagate_linelist(I.linelist.lower,
+  # #                                             interval = params$incubation.period)
+  # # }
+  # 
+  # # E onset
+  # if(minimal == FALSE){
+  #   cat("Getting Exposure onset curve... \n")
+  #   E.onset <- get_onset_curve(dates = database$Date,
+  #                              linelist = E.linelist,
+  #                              interval = params$incubation.period,
+  #                              next_intervals = list(params$effective.infectious.period))
+  # 
+  #   database$E.onset <- E.onset$value / samplesize
+  #   cat("Done getting Exposure onset curve. \n")
+  #   # print(head(E.onset)) # for debugging
+  #   # print(tail(E.onset)) # for debugging
+  #   # cat("E onset curve date range:", range(E.onset$date), "\n")  # for debugging
+  #   # cat("E onset curve nrows:", nrow(E.onset), "\n")  # for debugging
+  # }
+  # 
+  # # # E (detected)
+  # # E_d <- get_state_curve(dates = database$Date,
+  # #                        linelist = E.linelist,
+  # #                        interval = params$incubation.period)
+  # # database$E_d <- E_d$value
+  # #
+  # # # E
+  # # database <- database %>% mutate(E = E_d/q,
+  # #                                 E.upper = E_d/q.lower,
+  # #                                 E.lower = E_d/q.upper)
   # 
   # # E
-  # database <- database %>% mutate(E = E_d/q,
-  #                                 E.upper = E_d/q.lower,
-  #                                 E.lower = E_d/q.upper)
-  
-  # E
-  cat("Getting Exposure state curve... \n")
-  E <- get_state_curve(dates = database$Date,
-                       linelist = E.linelist,
-                       interval = params$incubation.period,
-                       next_intervals = list(params$effective.infectious.period))
-
-  database$E <- E$value / samplesize
-  cat("Done getting Exposure state curve. \n")
-  # print(head(E)) # for debugging
-  # print(tail(E)) # for debugging
-  # cat("E state curve date range:", range(E$date), "\n")
-  # cat("E state curve nrows:", nrow(E), "\n")
-
-  # Not using upper and lower estimates of q
-  # # E.upper
-  # if(is.list(params$q)){
-  #   E.upper <- get_state_curve(dates = database$Date,
-  #                      linelist = E.linelist.upper,
+  # cat("Getting Exposure state curve... \n")
+  # E <- get_state_curve(dates = database$Date,
+  #                      linelist = E.linelist,
   #                      interval = params$incubation.period,
   #                      next_intervals = list(params$effective.infectious.period))
-  #   database$E.upper <- E.upper$value
-  # }else{
-  #   database$E.upper <- database$E
-  # }
   # 
-  # # E.lower
-  # if(is.list(params$q)){
-  #   E.lower <- get_state_curve(dates = database$Date,
-  #                      linelist = E.linelist.lower,
-  #                      interval = params$incubation.period,
-  #                      next_intervals = list(params$effective.infectious.period))
-  #   database$E.lower <- E.lower$value
-  # }else{
-  #   database$E.lower <- database$E
-  # }
+  # database$E <- E$value / samplesize
+  # cat("Done getting Exposure state curve. \n")
+  # # print(head(E)) # for debugging
+  # # print(tail(E)) # for debugging
+  # # cat("E state curve date range:", range(E$date), "\n")
+  # # cat("E state curve nrows:", nrow(E), "\n")
+  # 
+  # # Not using upper and lower estimates of q
+  # # # E.upper
+  # # if(is.list(params$q)){
+  # #   E.upper <- get_state_curve(dates = database$Date,
+  # #                      linelist = E.linelist.upper,
+  # #                      interval = params$incubation.period,
+  # #                      next_intervals = list(params$effective.infectious.period))
+  # #   database$E.upper <- E.upper$value
+  # # }else{
+  # #   database$E.upper <- database$E
+  # # }
+  # #
+  # # # E.lower
+  # # if(is.list(params$q)){
+  # #   E.lower <- get_state_curve(dates = database$Date,
+  # #                      linelist = E.linelist.lower,
+  # #                      interval = params$incubation.period,
+  # #                      next_intervals = list(params$effective.infectious.period))
+  # #   database$E.lower <- E.lower$value
+  # # }else{
+  # #   database$E.lower <- database$E
+  # # }
+  # 
+  # 
+  # # END NON-CHUNK PROCESSING
+  
   
   # forecasting I
   cat("Forecasting I state curve... \n")
@@ -816,11 +938,6 @@ nowcast_from_case_reports <- function(casereports, params,
   # R effective
   if(minimal == FALSE){
     
-    ### START HERE
-    # burnin <- get_sd(params$effective.infectious.period)*2
-    # 
-    # tmp_I <- 
-    
     database <- database %>%
       mutate(R_eff.mean = na_not_finite(params$effective.infectious.period$mean * 
                                         rowSums(dplyr::select(., E.onset, E.onset.forecast.mean), na.rm = TRUE) /
@@ -838,89 +955,230 @@ nowcast_from_case_reports <- function(casereports, params,
     
   }
   
-  return(database)
+  ### START HERE
+  # get R_effective
+  # burnin <- get_sd(interval)*2
+  # get_R_eff <- function(dates,E.onset.curve,I.state,gamma) {
+  #   R_effective <- E.onset.curve/(I.state*gamma)
+  # }
+  
+  
+  # get_R_eff <- function(database, burnin = 0) {
+  #   # dates <- range(dates)
+  #   onset.curve <- linelist %>%
+  #     mutate(onset.date = lubridate::floor_date(onset.date,"days")) %>%
+  #     count(onset.date) %>%
+  #     padr::pad(interval = "day", start_val = range(dates)[1L], end_val = range(dates)[2L])
+  # 
+  #   interval$sd <- get_sd(interval)
+  #   natail <- interval$mean+interval$sd*2
+  #   if(!is.null(next_intervals)){
+  #     for(i in 1:length(next_intervals)){
+  #       next_intervals[[i]]$sd <- get_sd(next_intervals[[i]])
+  #       natail <- natail + next_intervals[[i]]$mean+next_intervals[[i]]$sd*2
+  #     }
+  #   }
+  # 
+  #   # NA replace
+  #   onset.curve$n <- replace_na(onset.curve$n, 0)
+  # 
+  #   # set last several values to NA
+  #   onset.curve$n <- tail_na(onset.curve$n,round(natail))
+  # 
+  #   onset.curve <- onset.curve %>% rename(date = onset.date, value = n)
+  # 
+  #   onset.curve
+  # }
+  ### END HERE
+  
+  # Save
+  if(savechunks==TRUE){
+    return(list(database = database, chunks = list(I = I, E = E, E.onset = E.onset))) # for debugging.
+  }else{
+    return(database)
+  }  
+  
 }
 
-# nowcast from death reports using symtpom-onset-to-death
 
-nowcast_from_deaths_with_onset_to_death <- function(deathreports, params, tvar.bandwidth=NULL) {
+# Nowcast from death reports using symtpom-onset-to-death -------------------------------------
+
+nowcast_from_deaths_with_onset_to_death <- function(deathreports, 
+                                                    params, 
+                                                    tvar.bandwidth=NULL,
+                                                    minimal=FALSE, # calculate E.onset and R effective
+                                                    samplesize=1.0, # proportion of cases to use in generating linelist
+                                                    chunksize=30, # rows per chunk.
+                                                    savechunks=FALSE  # save chunk dataframes for debugging
+                                                    ) {
   database <- deathreports
-  # # Ascertainment - not used for death reports
-  # if(is.null(params$q)){
-  #   params$q <- 1
-  # }
-  # if(is.data.frame(params$q)){
-  #   if(nrow(database) != nrow(params$q)) {s
-  #     stop("nowcast_from_case_reports: q must be a constant, a list, or a dataframe with the same number of rows as casereports.")
-  #   }
-  #   database$q <- params$q$mean
-  #   database$q.upper <- params$q$upper
-  #   database$q.lower <- params$q$lower
-  # }else{
-  #   if(is.list(params$q)){
-  #     database$q <- params$q$mean
-  #     database$q.upper <- params$q$upper
-  #     database$q.lower <- params$q$lower
-  #   }else{
-  #     database$q <- params$q[1]
-  #     database$q.upper <- params$q[1]
-  #     database$q.lower <- params$q[1]
-  #   }
-  # }
-  # database$a <- params$a # no longer used
-  # database$c <- params$c # no longer used
+  if(is.null(chunksize)) {
+    chunksize <- nrow(database)
+  }
+  # Infection Fatality Rate
   database$IFR <- params$IFR
 
   # Compensate for IFR
   database$deaths_over_IFR <- database$deaths / database$IFR
+  
+  # Sample deaths
+  sample <- database$deaths_over_IFR * samplesize
+  
+  
+  # CHUNK PROCESSING*******************************************
+  
+  nchunks <- ceiling(nrow(database)/chunksize)
+  I <- E <- E.onset <- tibble(date=database$Date)  # init curves
+  date.chunks <- split(database$Date, ceiling(seq_along(database$Date)/chunksize))
+  sample.chunks <- split(sample, ceiling(seq_along(sample)/chunksize))
+  
+  for (i in 1:(nchunks)) {
+    cat(paste("Processing chunk", i, "...\n")) # for debugging
     
-  # I linelist
-  I_to_Death.linelist <- backward_simulate_linelist(dates = database$Date,
-                                           counts = database$deaths_over_IFR,
-                                           interval = params$onset.to.death.period)
-  # # I onset
-  # I.onset <- get_onset_curve(dates = database$Date,
-  #                            linelist = I_to_Death.linelist,
-  #                            interval = params$onset.to.death.period)
-  # database$I.onset <- I.onset$n
+    # offset = (i-1) * chunksize
+    dates <- date.chunks[[i]]
+    counts <- sample.chunks[[i]]
+    
+    if(sum(counts, na.rm = TRUE) > 0) {  
+      # I to death linelist for sample of cases for chunk
+      chunk.I.linelist <- backward_simulate_linelist(dates = dates,
+                                                     counts = counts,
+                                                     interval = params$onset.to.death.period)
+      
+      # E linelist for sample of cases for chunk
+      chunk.E.linelist <- backward_propagate_linelist(chunk.I.linelist,
+                                                      interval = params$incubation.period)
+      
+      # I for sample of deaths for chunk
+      chunk.I.date.min <- lubridate::floor_date(min(chunk.I.linelist$onset.date),"days")
+      chunk.I.dates <- seq(chunk.I.date.min, max(database$Date), 1)
+      chunk.I <- get_chunk_state_curve(dates = chunk.I.dates,
+                                       linelist = chunk.I.linelist,
+                                       interval = params$onset.to.death.period)
+      names(chunk.I)[2] <- paste0("chunk",i)
+      I <- full_join(I,chunk.I,by="date")
+      
+      # E for sample of deaths for chunk
+      chunk.E.date.min <- lubridate::floor_date(min(chunk.E.linelist$onset.date),"days")
+      chunk.E.dates <- seq(chunk.E.date.min, max(database$Date), 1)
+      chunk.E <- get_chunk_state_curve(dates = chunk.E.dates,
+                                       linelist = chunk.E.linelist,
+                                       interval = params$incubation.period,
+                                       next_intervals = list(params$onset.to.death.period))
+      names(chunk.E)[2] <- paste0("chunk",i)
+      E <- full_join(E,chunk.E,by="date")
+      
+      # E onset for sample of cases for chunk
+      if(minimal == FALSE){
+        # cat("Getting Exposure onset curve... \n")
+        chunk.E.onset <- get_chunk_onset_curve(dates = chunk.E.dates,
+                                               linelist = chunk.E.linelist,
+                                               interval = params$incubation.period,
+                                               next_intervals = list(params$onset.to.death.period))
+        names(chunk.E.onset)[2] <- paste0("chunk",i)
+        E.onset <- full_join(E.onset,chunk.E.onset,by="date")
+      }else{
+        E.onset[paste0("chunk",i)] <- NA
+      }
+    }else{
+      I[paste0("chunk",i)] <- NA
+      E[paste0("chunk",i)] <- NA
+      E.onset[paste0("chunk",i)] <- NA
+    }
+  }  # end for loop
   
-  # I
-  I <- get_state_curve(dates = database$Date,
-                         linelist = I_to_Death.linelist,
-                         interval = params$onset.to.death.period)
-  database$I <- I$value
+  # Sum chunks
+  I$value <- get_curve_from_chunks(I, 
+                                   interval = params$onset.to.death.period
+                                   )$value
+  E$value <- get_curve_from_chunks(E, 
+                                   interval = params$incubation.period,
+                                   next_intervals = list(params$effective.infectious.period)
+                                   )$value
+  E.onset$value <- get_curve_from_chunks(E.onset, 
+                                         interval = params$incubation.period,
+                                         next_intervals = list(params$onset.to.death.period)
+                                         )$value
   
-  # E linelist
-  E_to_I.linelist <- backward_propagate_linelist(I_to_Death.linelist,
-                                                 interval = params$incubation.period)
+  # Rescale curves and store in database
+  database$I <- I$value / samplesize
+  database$E <- E$value / samplesize
+  if(minimal==FALSE) {
+    database$E.onset <- E.onset$value / samplesize
+  }else{
+    database$E.onset <- NA
+  }  
   
-  # # E onset
-  # E.onset <- get_onset_curve(dates = database$Date,
-  #                            linelist = E_to_I.linelist,
-  #                            interval = params$incubation.period,
-  #                            next_intervals = list(params$onset.to.death.period))  
-  # database$E.onset <- E.onset$n
+  
+  # END CHUNK PROCESSING***************************************
 
-  # E
-  E <- get_state_curve(dates = database$Date,
-                         linelist = E_to_I.linelist,
-                         interval = params$incubation.period,
-                         next_intervals = list(params$onset.to.death.period))
-  database$E <- E$value
+  
+  # # NON-CHUNK PROCESSING
+  # 
+  # # I linelist
+  # I_to_Death.linelist <- backward_simulate_linelist(dates = database$Date,
+  #                                          counts = database$deaths_over_IFR,
+  #                                          interval = params$onset.to.death.period)
+  # # # I onset
+  # # I.onset <- get_onset_curve(dates = database$Date,
+  # #                            linelist = I_to_Death.linelist,
+  # #                            interval = params$onset.to.death.period)
+  # # database$I.onset <- I.onset$n
+  # 
+  # # I
+  # I <- get_state_curve(dates = database$Date,
+  #                        linelist = I_to_Death.linelist,
+  #                        interval = params$onset.to.death.period)
+  # database$I <- I$value
+  # 
+  # # E linelist
+  # E_to_I.linelist <- backward_propagate_linelist(I_to_Death.linelist,
+  #                                                interval = params$incubation.period)
+  # 
+  # # # E onset
+  # # E.onset <- get_onset_curve(dates = database$Date,
+  # #                            linelist = E_to_I.linelist,
+  # #                            interval = params$incubation.period,
+  # #                            next_intervals = list(params$onset.to.death.period))  
+  # # database$E.onset <- E.onset$n
+  # 
+  # # E
+  # E <- get_state_curve(dates = database$Date,
+  #                        linelist = E_to_I.linelist,
+  #                        interval = params$incubation.period,
+  #                        next_intervals = list(params$onset.to.death.period))
+  # database$E <- E$value
+  # 
+  # # END NON-CHUNK PROCESSING
   
   # forecasting I
+  cat("Forecasting I state curve... \n")
   I.forecast <- tvar_forecast_to_present(database$I, bw=tvar.bandwidth)
   database$I.fit <- I.forecast$fit
   database$I.forecast.mean <- I.forecast$mean
   database$I.forecast.lower80 <- I.forecast$lower80
   database$I.forecast.upper80 <- I.forecast$upper80
+  cat("Done forecasting I state curve. \n")
   
   # forecasting E
+  cat("Forecasting E state curve... \n")
   E.forecast <- tvar_forecast_to_present(database$E, bw=tvar.bandwidth)
   database$E.fit <- E.forecast$fit
   database$E.forecast.mean <- E.forecast$mean
   database$E.forecast.lower80 <- E.forecast$lower80
   database$E.forecast.upper80 <- E.forecast$upper80
+  cat("Done forecasting E state curve. \n")
+  
+  # forecasting E.onset
+  if(minimal == FALSE){
+    cat("Forecasting E onset curve... \n")
+    E.onset.forecast <- tvar_forecast_to_present(database$E.onset, bw=tvar.bandwidth)
+    database$E.onset.fit <- E.onset.forecast$fit
+    database$E.onset.forecast.mean <- E.onset.forecast$mean
+    database$E.onset.forecast.upper80 <- E.onset.forecast$upper80
+    database$E.onset.forecast.lower80 <- E.onset.forecast$lower80
+    cat("Done forecasting E onset curve... \n")
+  }
   
   # nowcast
   
@@ -929,16 +1187,77 @@ nowcast_from_deaths_with_onset_to_death <- function(deathreports, params, tvar.b
            nowcast.upper = rowSums(dplyr::select(., I, I.forecast.upper80, E, E.forecast.upper80), na.rm = TRUE),
            nowcast.lower = rowSums(dplyr::select(., I, I.forecast.lower80, E, E.forecast.lower80), na.rm = TRUE)
     ) 
-  return(database)
+  
+  # cumulative 
+  if(minimal == FALSE){
+    database <- database %>%
+      mutate(cum.deaths = cumsum(replace_na(deaths,0)),
+             cum.infections.mean = cumsum(
+               rowSums(dplyr::select(., E.onset, E.onset.forecast.mean), na.rm = TRUE)
+             ),
+             cum.infections.upper80 = cumsum(
+               rowSums(dplyr::select(., E.onset, E.onset.forecast.upper80), na.rm = TRUE)
+             ),
+             cum.infections.lower80 = cumsum(
+               rowSums(dplyr::select(., E.onset, E.onset.forecast.lower80), na.rm = TRUE)
+             )
+      )
+  }
+  
+  
+  # R effective
+  if(minimal == FALSE){
+    
+    database <- database %>%
+      mutate(R_eff.mean = na_not_finite(params$effective.infectious.period$mean * 
+                                        rowSums(dplyr::select(., E.onset, E.onset.forecast.mean), na.rm = TRUE) /
+                                        rowSums(dplyr::select(., I, I.forecast.mean), na.rm = TRUE)
+                                        ),
+             R_eff.lower = na_not_finite(params$effective.infectious.period$mean *
+                                        rowSums(dplyr::select(., E.onset, E.onset.forecast.lower80), na.rm = TRUE) / 
+                                        rowSums(dplyr::select(., I, I.forecast.lower80), na.rm = TRUE)
+                                        ),
+             R_eff.upper = na_not_finite(params$effective.infectious.period$mean *
+                                        rowSums(dplyr::select(., E.onset, E.onset.forecast.upper80), na.rm = TRUE) /
+                                        rowSums(dplyr::select(., I, I.forecast.upper80), na.rm = TRUE)
+                                        )
+             )
+
+  }
+
+  # Save
+  if(savechunks==TRUE){
+    return(list(database = database, chunks = list(I = I, E = E, E.onset = E.onset))) # for debugging.
+  }else{
+    return(database)
+  }  
+  
 }
 
-# calculate ascertainment
 
-get_ascertainment <- function(cases, deaths, params, window = 7, samplesize = 1.0) {
+# Calculate ascertainment ---------------------------------------------------------------------
+
+get_ascertainment <- function(cases, 
+                              deaths, 
+                              params, 
+                              window = 7, 
+                              tvar.bandwidth=NULL, 
+                              samplesize = 1.0, 
+                              chunksize = 30) {
   params$q <- 1
   
-  nowcast_from_cases <- nowcast_from_case_reports(cases, params, minimal=TRUE, samplesize = samplesize)
-  nowcast_from_deaths <- nowcast_from_deaths_with_onset_to_death(deaths, params)
+  nowcast_from_cases <- nowcast_from_case_reports(cases, 
+                                                  params, 
+                                                  minimal=TRUE, 
+                                                  tvar.bandwidth=tvar.bandwidth, 
+                                                  samplesize = samplesize,
+                                                  chunksize = chunksize)
+  nowcast_from_deaths <- nowcast_from_deaths_with_onset_to_death(deaths, 
+                                                                 params, 
+                                                                 minimal=TRUE, 
+                                                                 tvar.bandwidth=tvar.bandwidth, 
+                                                                 samplesize = samplesize,
+                                                                 chunksize = chunksize)
   
   maxspan <- max(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
   minspan <- min(nrow(nowcast_from_cases), nrow(nowcast_from_deaths))
@@ -998,10 +1317,78 @@ get_ascertainment <- function(cases, deaths, params, window = 7, samplesize = 1.
   return(ascertainment)
 }
 
+
+# Plotting helper functions -------------------------------------------------------------------
+
 ## function to wrap text in an html span tag styled with a serif font
 
+serif <- function(x) {
+  htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
+}
 
-# plot nowcast from case reports
+## format numbers for display
+
+display <- function(x) {
+  format(round(x), big.mark=",", trim = TRUE)
+}
+
+
+# Visual Theme -------------------------------------------------------------------
+
+nowcast_theme <- function (name='nowcast_theme_default', 
+                           col.cases = 'rgba(0, 0, 0, .35)',
+                           col.deaths = 'rgba(64, 0, 0, .5)',
+                           col.I = 'rgba(230, 7, 7, .75)',
+                           col.I.ci = 'rgba(230, 7, 7, .15)',
+                           col.E = 'rgba(7, 164, 181, 0.75)',
+                           col.E.ci = 'rgba(7, 164, 181, 0.15)',
+                           col.nowcast = 'rgba(7, 7, 230, 0.75)',
+                           col.nowcast.ci = 'rgba(7, 7, 230, 0.15)',
+                           col.invisible = 'rgba(7, 7, 230, .01)',
+                           col.R = 'rgb(164, 0, 181, .75)',
+                           col.R.ci = 'rgb(164, 0, 181, .25)',
+                           col.other = 'rgb(0, 0, 0, .75)',
+                           col.other.ci = 'rgb(0, 0, 0, .25)',
+                           lwd.ci = .5,
+                           lwd.mean = 1,
+                           lwd.data = 2){
+  
+  # translate colors
+  formatcolor <- function(x){
+    if(is.numeric(x)) {
+      if(length(x) != 4) stop ("Color must be specificed as a 4 element numeric vector (r,g,b,a) 
+                               with max (255,255,255,1), or as a string. 
+                               See https://plotly-r.com/working-with-colors.html")
+      y = paste0('rgba(',paste(x,collapse = ','),')')
+    }else{
+      y = x
+    }
+    return(y)
+  }
+  
+  theme <- list(
+    col.cases = formatcolor(col.cases),
+    col.deaths = formatcolor(col.deaths),
+    col.I = formatcolor(col.I),
+    col.I.ci = formatcolor(col.I.ci),
+    col.E = formatcolor(col.E),
+    col.E.ci = formatcolor(col.E.ci),
+    col.nowcast = formatcolor(col.nowcast),
+    col.nowcast.ci = formatcolor(col.nowcast.ci),
+    col.invisible = formatcolor(col.invisible),
+    col.R = formatcolor(col.R),
+    col.R.ci = formatcolor(col.R.ci),
+    col.other = formatcolor(col.other),
+    col.other.ci = formatcolor(col.other.ci),
+    lwd.ci = lwd.ci,
+    lwd.mean = lwd.mean,
+    lwd.data = lwd.data
+  )
+  
+  assign(name,theme,envir = .GlobalEnv)
+}
+
+# Plot nowcast from case reports --------------------------------------------------------------
 
 plot_nowcast_from_case_reports <- function(database, 
                                            plotcases=TRUE, 
@@ -1010,24 +1397,38 @@ plot_nowcast_from_case_reports <- function(database,
                                            annotations = FALSE, 
                                            maxy = 10^7, 
                                            logy = TRUE, 
-                                           legend = FALSE) {
+                                           legend = FALSE,
+                                           theme = 'default') {
 
-  serif <- function(x) {
-    htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
+  # VISUAL VARIABLES ***************************
+  if(is.character(theme)) {
+    if(theme=='default') {
+      nctheme <- get0('nowcast_theme_default', envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())
+    }else{
+      nctheme <- get0(theme, envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())    
+    }
+  }else{
+    if(is.list(theme)) { 
+      nctheme <- nowcast_theme()
+      nctheme[[names(theme)[i]]] <- theme[[i]]
+      }
   }
-  
-  display <- function(x) {
-    format(round(x), big.mark=",", trim = TRUE)
+  for(i in seq_along(nctheme)) { 
+    assign(names(nctheme)[i], nctheme[[i]]) 
   }
-  
+
   plotfont <- list(family = "serif")
   hoverlabel <- list(namelength = -1,
                      font = list(family = "serif"))
+  # END VISUAL VARIABLES ***********************
   
+  # Plot
   p_nowcast <- plotly::plot_ly(data = database, x = ~Date) %>% 
     plotly::add_trace(y = ~nowcast.mean, 
                       name = 'Total unnotified cases', type = 'scatter', mode = 'lines',
-                      line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
+                      line = list(color = col.nowcast, width = lwd.data, dash = 'dot'),
                       legendgroup = 'group4',
                       hoverinfo = "x+text",
                       hoverlabel = hoverlabel,
@@ -1040,21 +1441,21 @@ plot_nowcast_from_case_reports <- function(database,
     ) %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
                         name = '(prediction interval)', mode='lines',
-                        line = list(color = col.nowcast, width = ci.lwd),
+                        line = list(color = col.nowcast, width = lwd.ci),
                         fillcolor = col.nowcast.ci,
                         legendgroup = 'group4',
                         hoverinfo='none') %>% 
   
     plotly::add_trace(y = ~E, 
                       name = 'Latent cases', type = 'scatter', mode = 'lines',
-                      line = list(color = col.E, width = data.lwd),
+                      line = list(color = col.E, width = lwd.data),
                       legendgroup = 'group3',
                       hoverinfo = "x+text",
                       hoverlabel = hoverlabel,
                       text = ~paste(display(E),serif("latent")) ) %>%
     plotly::add_trace(y = ~E.forecast.mean, 
                       name = '(forecast average)', type = 'scatter', mode = 'lines',
-                      line = list(color = col.E, width = mean.lwd, dash = 'dot'),
+                      line = list(color = col.E, width = lwd.mean, dash = 'dot'),
                       legendgroup = 'group3',
                       hoverinfo = "x+text",
                       hoverlabel = hoverlabel,
@@ -1063,21 +1464,21 @@ plot_nowcast_from_case_reports <- function(database,
                                     display(E.forecast.upper80),")") ) %>% 
     plotly::add_ribbons(ymin = ~E.forecast.lower80, ymax = ~E.forecast.upper80,
                         name = '(prediction interval)', type = 'scatter', mode='lines',
-                        line = list(color = col.E, width = ci.lwd),
+                        line = list(color = col.E, width = lwd.ci),
                         fillcolor = col.E.ci,
                         legendgroup = 'group3',
                         hoverinfo='none') %>% 
     
     plotly::add_trace(y = ~I, 
                       name = 'Symptomatic cases', type = 'scatter', mode = 'lines',
-                      line = list(color = col.I, width = data.lwd),
+                      line = list(color = col.I, width = lwd.data),
                       legendgroup = 'group2',
                       hoverinfo = "x+text",
                       hoverlabel = hoverlabel,
                       text = ~paste(display(I),serif("symptomatic")) ) %>%
     plotly::add_trace(y = ~I.forecast.mean, 
                       name = '(forecast average)', type = 'scatter', mode = 'lines',
-                      line = list(color = col.I, width = mean.lwd, dash = 'dot'),
+                      line = list(color = col.I, width = lwd.mean, dash = 'dot'),
                       legendgroup = 'group2',
                       hoverinfo = "x+text",
                       hoverlabel = hoverlabel,
@@ -1086,7 +1487,7 @@ plot_nowcast_from_case_reports <- function(database,
                                     display(I.forecast.upper80),")") ) %>% 
     plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
                         name = '(prediction interval)', mode='lines',
-                        line = list(color = col.I, width = ci.lwd),
+                        line = list(color = col.I, width = lwd.ci),
                         fillcolor = col.I.ci,
                         legendgroup = 'group2',
                         hoverinfo='none') 
@@ -1123,7 +1524,7 @@ plot_nowcast_from_case_reports <- function(database,
     p_nowcast <- p_nowcast %>% 
       plotly::add_trace(y = ~deaths, 
                         name = 'New death notifications', type = 'scatter', mode = 'lines',
-                        line = list(color = col.deaths, width = data.lwd, shape = 'hvh'),
+                        line = list(color = col.deaths, width = lwd.data, shape = 'hvh'),
                         legendgroup = 'group1',
                         hoverinfo = "x+text",
                         hoverlabel = hoverlabel,
@@ -1191,21 +1592,35 @@ plot_nowcast_from_case_reports <- function(database,
   p_nowcast
 }
 
-# plot nowcast from death reports
 
-plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
+# plot nowcast from death reports -------------------------------------------------------------
+
+plot_nowcast_from_death_reports <- function(database, maxy = 10^7, theme = 'default') {
   
-  # col.cases <- 'rgba(0, 0, 0, .35)'
-  # col.I <- 'rgba(230, 7, 7, .75)'
-  # col.I.ci <- 'rgba(230, 7, 7, 0.15)'
-  # col.E <- 'rgba(7, 164, 181, 0.75)'
-  # col.E.ci <- 'rgba(7, 164, 181, .15)'
-  # col.nowcast <- 'rgba(7, 7, 230, 0.75)'
-  # col.nowcast.ci <- 'rgba(7, 7, 230, 0.15)'
-  # 
-  # ci.lwd <- .5
-  # mean.lwd <- 1
-  # data.lwd <- 3
+  # VISUAL VARIABLES ***************************
+  if(is.character(theme)) {
+    if(theme=='default') {
+      nctheme <- get0('nowcast_theme_default', envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())
+    }else{
+      nctheme <- get0(theme, envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())    
+    }
+  }else{
+    if(is.list(theme)) { 
+      nctheme <- nowcast_theme()
+      nctheme[[names(theme)[i]]] <- theme[[i]]
+    }
+  }
+  for(i in seq_along(nctheme)) { 
+    assign(names(nctheme)[i], nctheme[[i]]) 
+  }
+  
+  plotfont <- list(family = "serif")
+  hoverlabel <- list(namelength = -1,
+                     font = list(family = "serif"))
+  # END VISUAL VARIABLES ***********************
+  
   
   p_nowcast <- plotly::plot_ly(data = database, x = ~Date) %>% 
     plotly::add_trace(y = ~deaths, type = 'bar', 
@@ -1215,39 +1630,39 @@ plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
   ) %>% 
     plotly::add_trace(y = ~I, 
                       name = 'Symptomatic cases', mode = 'lines',
-                      line = list(color = col.I, width = data.lwd),
+                      line = list(color = col.I, width = lwd.data),
                       legendgroup = 'group2') %>%
     plotly::add_trace(y = ~I.forecast.mean, 
                       name = '(forecast average)', mode = 'lines',
-                      line = list(color = col.I, width = mean.lwd, dash = 'dot'),
+                      line = list(color = col.I, width = lwd.mean, dash = 'dot'),
                       legendgroup = 'group2') %>% 
     plotly::add_ribbons(ymin = ~I.forecast.lower80, ymax = ~I.forecast.upper80,
                         name = '(prediction interval)', mode='lines',
-                        line = list(color = col.I, width = ci.lwd),
+                        line = list(color = col.I, width = lwd.ci),
                         fillcolor = col.I.ci,
                         legendgroup = 'group2') %>% 
     
     plotly::add_trace(y = ~E, 
                       name = 'Latent cases', mode = 'lines',
-                      line = list(color = col.E, width = data.lwd),
+                      line = list(color = col.E, width = lwd.data),
                       legendgroup = 'group3') %>%
     plotly::add_trace(y = ~E.forecast.mean, 
                       name = '(forecast average)', mode = 'lines',
-                      line = list(color = col.E, width = mean.lwd, dash = 'dot'),
+                      line = list(color = col.E, width = lwd.mean, dash = 'dot'),
                       legendgroup = 'group3') %>% 
     plotly::add_ribbons(ymin = ~E.forecast.lower80, ymax = ~E.forecast.upper80,
                         name = '(prediction interval)', mode='lines',
-                        line = list(color = col.E, width = ci.lwd),
+                        line = list(color = col.E, width = lwd.ci),
                         fillcolor = col.E.ci,
                         legendgroup = 'group3') %>% 
     
     plotly::add_trace(y = ~nowcast.mean, 
                       name = 'Total unnotified cases', mode = 'lines',
-                      line = list(color = col.nowcast, width = data.lwd, dash = 'dot'),
+                      line = list(color = col.nowcast, width = lwd.data, dash = 'dot'),
                       legendgroup = 'group4') %>% 
     plotly::add_ribbons(ymin = ~nowcast.lower, ymax = ~nowcast.upper,
                         name = '(prediction interval)', mode='lines',
-                        line = list(color = col.nowcast, width = ci.lwd),
+                        line = list(color = col.nowcast, width = lwd.ci),
                         fillcolor = col.nowcast.ci,
                         legendgroup = 'group4')
   
@@ -1260,41 +1675,82 @@ plot_nowcast_from_death_reports <- function(database, maxy = 10^7) {
   p_nowcast_logy
 }
 
-plot_ascertainment <- function(ascertainment, logy = TRUE){
+# plot ascertainment --------------------------------------------------------------------------
 
+plot_ascertainment <- function(ascertainment, logy = TRUE, theme = 'default'){
+
+  # VISUAL VARIABLES ***************************
+  if(is.character(theme)) {
+    if(theme=='default') {
+      nctheme <- get0('nowcast_theme_default', envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())
+    }else{
+      nctheme <- get0(theme, envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())    
+    }
+  }else{
+    if(is.list(theme)) { 
+      nctheme <- nowcast_theme()
+      nctheme[[names(theme)[i]]] <- theme[[i]]
+    }
+  }
+  for(i in seq_along(nctheme)) { 
+    assign(names(nctheme)[i], nctheme[[i]]) 
+  }
+  
+  plotfont <- list(family = "serif")
+  hoverlabel <- list(namelength = -1,
+                     font = list(family = "serif"))
+  # END VISUAL VARIABLES ***********************
+  
   p_ascertainment <- plotly::plot_ly(data = ascertainment, x = ~Date , y = ~mean, type = 'scatter',
                                      name = 'Ascertainment', mode = 'lines',
-                                     line = list(color = col.other, width = data.lwd)
+                                     line = list(color = col.other, width = lwd.data)
   ) %>%
     plotly::add_trace(y = ~lower,
                       name = 'upper 80% confidence', mode = 'lines',
-                      line = list(color = col.other, width = ci.lwd, dash = 'dot')) %>%
+                      line = list(color = col.other, width = lwd.ci, dash = 'dot')) %>%
     plotly::add_trace(y = ~upper,
                       name = 'lower 80% confidence', mode = 'lines',
-                      line = list(color = col.other, width = ci.lwd)) %>%
+                      line = list(color = col.other, width = lwd.ci)) %>%
     plotly::layout(yaxis = list(type = ifelse(logy==TRUE,"log","linear"),
                                 tickformat = ".2%",
                                 title="Ascertainment"))
   p_ascertainment
 }
 
-plot_R_effective <- function(database, legend=TRUE, maxy = 10) {
+# plot R effective ----------------------------------------------------------------------------
 
-  serif <- function(x) {
-    htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
+plot_R_effective <- function(database, legend=TRUE, maxy = 10, theme = 'default') {
+
+  # VISUAL VARIABLES ***************************
+  if(is.character(theme)) {
+    if(theme=='default') {
+      nctheme <- get0('nowcast_theme_default', envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())
+    }else{
+      nctheme <- get0(theme, envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())    
+    }
+  }else{
+    if(is.list(theme)) { 
+      nctheme <- nowcast_theme()
+      nctheme[[names(theme)[i]]] <- theme[[i]]
+    }
   }
-  
-  display <- function(x) {
-    format(round(x,2), big.mark=",", trim = TRUE)
+  for(i in seq_along(nctheme)) { 
+    assign(names(nctheme)[i], nctheme[[i]]) 
   }
   
   plotfont <- list(family = "serif")
   hoverlabel <- list(namelength = -1,
                      font = list(family = "serif"))
+  # END VISUAL VARIABLES ***********************
   
+
   p_Reff <- plotly::plot_ly(data = database, x = ~Date , y = ~R_eff.mean, type = 'scatter',
                                      name = 'R (mean)', mode = 'lines',
-                                     line = list(color = col.R, width = data.lwd),
+                                     line = list(color = col.R, width = lwd.data),
                             hoverinfo = "x+text",
                             hoverlabel = hoverlabel,
                             text = ~paste("mean R =", display(R_eff.mean),"\n",
@@ -1302,11 +1758,11 @@ plot_R_effective <- function(database, legend=TRUE, maxy = 10) {
                                           display(R_eff.upper),")")) %>%
     plotly::add_trace(y = ~R_eff.upper,
                       name = 'upper 80% confidence', mode = 'lines',
-                      line = list(color = col.R, width = ci.lwd, dash = 'dot'),
+                      line = list(color = col.R, width = lwd.ci, dash = 'dot'),
                       hoverinfo = "none") %>%
     plotly::add_trace(y = ~R_eff.lower,
                       name = 'lower 80% confidence', mode = 'lines',
-                      line = list(color = col.R, width = ci.lwd),
+                      line = list(color = col.R, width = lwd.ci),
                       hoverinfo = "none") %>%
     plotly::layout(yaxis = list(# type = "log", 
                                 # tickformat = ".2%", 
@@ -1339,24 +1795,40 @@ plot_R_effective <- function(database, legend=TRUE, maxy = 10) {
   
   p_Reff
 }
-  
-plot_cases <- function(database, maxy = max(database$cases), plottrend = TRUE, logy = TRUE, legend = FALSE) {
-  
-  if(plottrend==TRUE){
-    database$cases.ravg <- movingAverage(database$cases, window=7,centered = FALSE)
+
+# plot cases ----------------------------------------------------------------------------------
+
+plot_cases <- function(database, maxy = max(database$cases), plottrend = TRUE, 
+                       logy = TRUE, legend = FALSE,
+                       theme = 'default') {
+
+  # VISUAL VARIABLES ***************************
+  if(is.character(theme)) {
+    if(theme=='default') {
+      nctheme <- get0('nowcast_theme_default', envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())
+    }else{
+      nctheme <- get0(theme, envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())    
+    }
+  }else{
+    if(is.list(theme)) { 
+      nctheme <- nowcast_theme()
+      nctheme[[names(theme)[i]]] <- theme[[i]]
+    }
   }
-  
-  serif <- function(x) {
-    htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
-  }
-  
-  display <- function(x) {
-    format(round(x), big.mark=",", trim = TRUE)
+  for(i in seq_along(nctheme)) { 
+    assign(names(nctheme)[i], nctheme[[i]]) 
   }
   
   plotfont <- list(family = "serif")
   hoverlabel <- list(namelength = -1,
                      font = list(family = "serif"))
+  # END VISUAL VARIABLES ***********************
+  
+  if(plottrend==TRUE){
+    database$cases.ravg <- movingAverage(database$cases, window=7,centered = FALSE)
+  }
   
   p_cases <- plotly::plot_ly(data = database, x = ~Date) %>% 
     plotly::add_trace(y = ~cases, type = 'bar',
@@ -1390,7 +1862,7 @@ plot_cases <- function(database, maxy = max(database$cases), plottrend = TRUE, l
     p_cases <- p_cases %>% 
       plotly::add_trace(y = ~cases.ravg, 
                         name = '7 day moving average', type = 'scatter', mode = 'lines',
-                        line = list(color = col.cases, width = data.lwd, shape = 'hvh'),
+                        line = list(color = col.cases, width = lwd.data, shape = 'hvh'),
                         legendgroup = 'group_cases',
                         hoverinfo = "x+text",
                         hoverlabel = hoverlabel,
@@ -1400,37 +1872,41 @@ plot_cases <- function(database, maxy = max(database$cases), plottrend = TRUE, l
   p_cases
 }
 
-plot_deaths <- function(database, maxy = max(database$deaths), plottrend = TRUE, logy = TRUE, legend = FALSE) {
+
+# plot deaths ---------------------------------------------------------------------------------
+
+
+plot_deaths <- function(database, maxy = max(database$deaths), plottrend = TRUE, 
+                        logy = TRUE, legend = FALSE,
+                        theme = 'default') {
   
-  if(plottrend==TRUE){
-    database$deaths.ravg <- movingAverage(database$deaths, window=7,centered = FALSE)
+  # VISUAL VARIABLES ***************************
+  if(is.character(theme)) {
+    if(theme=='default') {
+      nctheme <- get0('nowcast_theme_default', envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())
+    }else{
+      nctheme <- get0(theme, envir = .GlobalEnv, mode = "any", inherits = TRUE,
+                      ifnotfound = nowcast_theme())    
+    }
+  }else{
+    if(is.list(theme)) { 
+      nctheme <- nowcast_theme()
+      nctheme[[names(theme)[i]]] <- theme[[i]]
+    }
   }
-  
-  # col.cases <- 'rgba(0, 0, 0, .35)'
-  # col.deaths <- 'rgba(64, 0, 0, .5)'
-  # col.I <- 'rgba(230, 7, 7, .75)'
-  # col.I.ci <- 'rgba(230, 7, 7, .15)'
-  # col.E <- 'rgba(7, 164, 181, 0.75)'
-  # col.E.ci <- 'rgba(7, 164, 181, 0.15)'
-  # col.nowcast <- 'rgba(7, 7, 230, 0.75)'
-  # col.nowcast.ci <- 'rgba(7, 7, 230, 0.15)'
-  # col.invisible <- 'rgba(7, 7, 230, .01)'
-  # 
-  # ci.lwd <- .5
-  # mean.lwd <- 1
-  # data.lwd <- 2
-  
-  serif <- function(x) {
-    htmltools::tags$span(x, style = htmltools::css(font.family = "serif"))
-  }
-  
-  display <- function(x) {
-    format(round(x), big.mark=",", trim = TRUE)
+  for(i in seq_along(nctheme)) { 
+    assign(names(nctheme)[i], nctheme[[i]]) 
   }
   
   plotfont <- list(family = "serif")
   hoverlabel <- list(namelength = -1,
                      font = list(family = "serif"))
+  # END VISUAL VARIABLES ***********************
+  
+  if(plottrend==TRUE){
+    database$deaths.ravg <- movingAverage(database$deaths, window=7,centered = FALSE)
+  }
   
   p_deaths <- plotly::plot_ly(data = database, x = ~Date) %>% 
     plotly::add_trace(y = ~deaths, type = 'bar',
@@ -1464,7 +1940,7 @@ plot_deaths <- function(database, maxy = max(database$deaths), plottrend = TRUE,
     p_deaths <- p_deaths %>% 
       plotly::add_trace(y = ~deaths.ravg, 
                         name = '7 day moving average', type = 'scatter', mode = 'lines',
-                        line = list(color = col.deaths, width = data.lwd, shape = 'hvh'),
+                        line = list(color = col.deaths, width = lwd.data, shape = 'hvh'),
                         legendgroup = 'group_deaths',
                         hoverinfo = "x+text",
                         hoverlabel = hoverlabel,
@@ -1474,20 +1950,26 @@ plot_deaths <- function(database, maxy = max(database$deaths), plottrend = TRUE,
   p_deaths
 }
 
+
+# plot dashboard ------------------------------------------------------------------------------
+
+
 plot_dashboard <- function(database, params, 
                            daterange = c("2020-02-15", #start
                                          as.character(Sys.Date())  #end
                                          ),
-                           plotcumulative = FALSE) {
-  p_asc <- plot_ascertainment(params$q, logy = FALSE)
-  p_reff <- plot_R_effective(database, legend = TRUE, maxy = 4)
+                           plotcumulative = FALSE,
+                           theme = 'default') {
+  p_asc <- plot_ascertainment(params$q, logy = FALSE, theme = theme)
+  p_reff <- plot_R_effective(database, legend = TRUE, maxy = 4, theme = theme)
   p_nc <- plot_nowcast_from_case_reports(database, legend = TRUE, logy = FALSE, 
                                          maxy = max(database$nowcast.upper),
                                          plotcases = FALSE,
                                          plotdeaths = FALSE,
-                                         plotcumulative = plotcumulative)
-  p_cases <- plot_cases(database, legend = TRUE, logy = FALSE)
-  p_deaths <- plot_deaths(database, legend = TRUE, logy = FALSE)
+                                         plotcumulative = plotcumulative,
+                                         theme = theme)
+  p_cases <- plot_cases(database, legend = TRUE, logy = FALSE, theme = theme)
+  p_deaths <- plot_deaths(database, legend = TRUE, logy = FALSE, theme = theme)
   
   dash <- plotly::subplot(p_nc, p_cases, p_deaths, p_asc, p_reff,
                           nrows = 5,
@@ -1502,25 +1984,4 @@ plot_dashboard <- function(database, params,
     )
   dash
 }
-
-# Visual Variables ----------------------------------------------------------------------------
-
-col.cases <- 'rgba(0, 0, 0, .35)'
-col.deaths <- 'rgba(64, 0, 0, .5)'
-col.I <- 'rgba(230, 7, 7, .75)'
-col.I.ci <- 'rgba(230, 7, 7, .15)'
-col.E <- 'rgba(7, 164, 181, 0.75)'
-col.E.ci <- 'rgba(7, 164, 181, 0.15)'
-col.nowcast <- 'rgba(7, 7, 230, 0.75)'
-col.nowcast.ci <- 'rgba(7, 7, 230, 0.15)'
-col.invisible <- 'rgba(7, 7, 230, .01)'
-col.R = 'rgb(164, 0, 181, .75)'
-col.R.ci = 'rgb(164, 0, 181, .25)'
-col.other = 'rgb(0, 0, 0, .75)'
-col.other.ci = 'rgb(0, 0, 0, .25)'
-
-ci.lwd <- .5
-mean.lwd <- 1
-data.lwd <- 2
-
 
