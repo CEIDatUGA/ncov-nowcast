@@ -1,3 +1,8 @@
-2021-04-06 07:59:16 
+
+> cat(as.character(Sys.time()), 
++     "\nNowcast for US completed.\nElapsed time =",
++     as.character(lubridate::seconds_to_period(elapsed)))
+2021-04-08 10:02:26 
 Nowcast for US completed.
-Elapsed time = 1H 59M 14S
+Elapsed time = 1H 21M 6S
+> sink()
