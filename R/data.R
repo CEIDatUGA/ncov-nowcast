@@ -125,8 +125,8 @@ states <- state_codes$state_abbr
 states <- states[states != ""]
 startdate <- as.Date("2019-12-01")
 
-US_nowcast_data <- get_US_nowcast_data(datasource = "Wikipedia", states = states, startdate = startdate)
-# US_nowcast_data <- get_US_nowcast_data(datasource = "JHU", states = states, startdate = startdate)
+# US_nowcast_data <- get_US_nowcast_data(datasource = "Wikipedia", states = states, startdate = startdate)
+US_nowcast_data <- get_US_nowcast_data(datasource = "JHU", states = states, startdate = startdate)
 
 # save RDS
 saveRDS(US_nowcast_data$cases,"data/cases.US.rds")
