@@ -1,7 +1,7 @@
-library(coronavirus)
+#library(coronavirus)
 library(dplyr)
 library(tidyverse)
-library(tibbletime)
+library(tibbletime) 
 
 # JHU COVID-19 DATA
 
