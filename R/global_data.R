@@ -1,7 +1,7 @@
 #library(coronavirus)
 library(dplyr)
 library(tidyverse)
-library(tibbletime) 
+library(tibbletime)
 
 # JHU COVID-19 DATA
 
@@ -27,7 +27,8 @@ Confirmed <- coronavirus %>%
   filter(country != "Netherlands") %>%
   filter(country != "United Kingdom") %>%
   select(Date, country, cases) %>%
-  spread(key = country, value = cases)
+  spread(key = country, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date)
 
 #  Create single country-level calculations for the removed countries 
 
@@ -38,7 +39,8 @@ Australia.confirmed <- coronavirus %>%
   select(Date, province, cases) %>%
   spread(key = province, value = cases) %>%
   mutate(Australia = rowSums(.[,-1],na.rm = TRUE)) %>%
-  select(Date, Australia)
+  select(Date, Australia) %>%
+  tibbletime::as_tbl_time(index=Date)
 
 # Canada
 Canada.confirmed <- coronavirus %>%
@@ -47,7 +49,8 @@ Canada.confirmed <- coronavirus %>%
   select(Date, province, cases) %>%
   spread(key = province, value = cases) %>%
   mutate(Canada = rowSums(.[,-1],na.rm = TRUE)) %>%
-  select(Date, Canada)
+  select(Date, Canada) %>%
+  tibbletime::as_tbl_time(index=Date)
   
 # China
 China.confirmed <- coronavirus %>%
@@ -56,7 +59,8 @@ China.confirmed <- coronavirus %>%
   select(Date, province, cases) %>%
   spread(key = province, value = cases) %>%
   mutate(China = rowSums(.[,-1],na.rm = TRUE)) %>%
-  select(Date, China)
+  select(Date, China) %>%
+  tibbletime::as_tbl_time(index=Date)
 
 
 # *** DENMARK, FAROE ISLANDS, GREENLAND
@@ -67,7 +71,8 @@ Denmark.confirmed <- coronavirus %>%
   filter(type == "confirmed") %>%
   filter(country == "Denmark") %>%
   select(Date, province, cases) %>%
-  spread(key = province, value = cases)
+  spread(key = province, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date)
 names(Denmark.confirmed)[2] <- "Denmark"
 
 # France & provinces 
@@ -75,7 +80,8 @@ France.confirmed <- coronavirus %>%
   filter(type == "confirmed") %>%
   filter(country == "France") %>%
   select(Date, province, cases) %>%
-  spread(key = province, value = cases)
+  spread(key = province, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date)
 names(France.confirmed)[2] <- "France"
 
 # Netherlands & provinces
@@ -83,7 +89,8 @@ Netherlands.confirmed <- coronavirus %>%
   filter(type == "confirmed") %>%
   filter(country == "Netherlands") %>%
   select(Date, province, cases) %>%
-  spread(key = province, value = cases) 
+  spread(key = province, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date) 
 names(Netherlands.confirmed)[2] <- "Netherlands"
 
 # United Kingdom & provinces
@@ -91,7 +98,8 @@ UK.confirmed <- coronavirus %>%
   filter(type == "confirmed") %>%
   filter(country == "United Kingdom") %>%
   select(Date, province, cases) %>%
-  spread(key = province, value = cases)
+  spread(key = province, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date)
 names(UK.confirmed)[2] <- "UK"
 
 # COMBINE AND ALPHEBETIZE
@@ -131,7 +139,8 @@ Death <- coronavirus %>%
   filter(country != "Netherlands") %>%
   filter(country != "United Kingdom") %>%
   select(Date, country, cases) %>%
-  spread(key = country, value = cases)
+  spread(key = country, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date)
 
 #  Create single country-level calculations for the removed countries 
 
@@ -142,7 +151,8 @@ Australia.death <- coronavirus %>%
   select(Date, province, cases) %>%
   spread(key = province, value = cases) %>%
   mutate(Australia = rowSums(.[,-1],na.rm = TRUE)) %>%
-  select(Date, Australia)
+  select(Date, Australia) %>%
+  tibbletime::as_tbl_time(index=Date)
 
 # Canada
 Canada.death <- coronavirus %>%
@@ -151,7 +161,8 @@ Canada.death <- coronavirus %>%
   select(Date, province, cases) %>%
   spread(key = province, value = cases) %>%
   mutate(Canada = rowSums(.[,-1],na.rm = TRUE)) %>%
-  select(Date, Canada)
+  select(Date, Canada) %>%
+  tibbletime::as_tbl_time(index=Date)
 
 # China
 China.death <- coronavirus %>%
@@ -160,7 +171,8 @@ China.death <- coronavirus %>%
   select(Date, province, cases) %>%
   spread(key = province, value = cases) %>%
   mutate(China = rowSums(.[,-1],na.rm = TRUE)) %>%
-  select(Date, China)
+  select(Date, China) %>%
+  tibbletime::as_tbl_time(index=Date)
 
 
 # *** DENMARK, FAROE ISLANDS, GREENLAND
@@ -171,7 +183,8 @@ Denmark.death <- coronavirus %>%
   filter(type == "death") %>%
   filter(country == "Denmark") %>%
   select(Date, province, cases) %>%
-  spread(key = province, value = cases)
+  spread(key = province, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date)
 names(Denmark.death)[2] <- "Denmark"
 
 # France & provinces 
@@ -179,7 +192,8 @@ France.death <- coronavirus %>%
   filter(type == "death") %>%
   filter(country == "France") %>%
   select(Date, province, cases) %>%
-  spread(key = province, value = cases)
+  spread(key = province, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date)
 names(France.death)[2] <- "France"
 
 # Netherlands & provinces
@@ -187,7 +201,8 @@ Netherlands.death <- coronavirus %>%
   filter(type == "death") %>%
   filter(country == "Netherlands") %>%
   select(Date, province, cases) %>%
-  spread(key = province, value = cases) 
+  spread(key = province, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date) 
 names(Netherlands.death)[2] <- "Netherlands"
 
 # United Kingdom & provinces
@@ -195,7 +210,8 @@ UK.death <- coronavirus %>%
   filter(type == "death") %>%
   filter(country == "United Kingdom") %>%
   select(Date, province, cases) %>%
-  spread(key = province, value = cases)
+  spread(key = province, value = cases) %>%
+  tibbletime::as_tbl_time(index=Date)
 names(UK.death)[2] <- "UK"
 
 # COMBINE AND ALPHEBETIZE
