@@ -10,9 +10,10 @@ output:
 
 ```{r setup, include=FALSE}
 
-source('R/nowcast.R')
-#source('R/data.R')
-source('R/global_data.R')
+source('./R/nowcast.R')
+#source('./R/global_data.R')
+#source('R/data.R') # data for US model- useful for debugging as of: 4/26/21
+
 ```
 
 <!-- Set params for Global -->
@@ -75,7 +76,7 @@ fatalities.global.all <- fatalities.global %>% dplyr::select(Date, deaths = Glob
 
 # calculate and load ascertainment (time varying q with upper and lower bounds)
 
-params.Global$q <- get_ascertainment(cases.global.all, fatalities.global.all, params.Global, window = 7)
+params.Global$q <- get_ascertainment(cases.global.all, fatalities.global.all, params.Global, window = 7, samplesize = 0.01)
 saveRDS(params.Global,"data/params.global.rds")
 
 # ## alternate contant q
