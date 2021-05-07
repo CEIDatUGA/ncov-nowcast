@@ -61,17 +61,19 @@ get_US_nowcast_data <- function(datasource, states, startdate) {
     us_jhu_cases_clean <- clean_us_jhu(us_jhu_cases) %>%
       tidyr::pivot_longer(cols = c(-state_name, -FIPS, -Admin2), names_to = "Date", values_to = "Cases") %>%
       select(-FIPS) %>% 
-      left_join(state_codes, by = "state_name")
+      left_join(USAboundaries::state_codes, by = "state_name")
     # Clean deaths
     us_jhu_deaths_clean <- clean_us_jhu(us_jhu_deaths) %>% 
       tidyr::pivot_longer(cols = c(-state_name, -FIPS, -Admin2), names_to = "Date", values_to = "Deaths") %>%
-      select(-FIPS)
-    
+      select(-FIPS) %>% 
+      left_join(USAboundaries::state_codes, by = "state_name")
+
     #combine cases and deaths
-    us_jhu_combined <- inner_join(us_jhu_cases_clean, us_jhu_deaths_clean)
+    us_jhu_combined <- inner_join(us_jhu_cases_clean, us_jhu_deaths_clean) %>% 
+      filter(!state_name %in% c("Diamond Princess", "Grand Princess") )
     us_popsize <- readRDS(here::here("data","us_popsize.rds")) %>%
-      rename(state_abr = state, state_name = state_full, pop_size = total_pop)
-    us_jhu_total <- inner_join(us_jhu_combined, us_popsize) %>%
+      select(state_abbr = state, pop_size = total_pop)
+    us_jhu_total <- inner_join(us_jhu_combined, us_popsize ) %>%
       mutate(Date = as.Date(as.character(Date),format="%m/%d/%y")) %>%
       group_by(state_name, Admin2) %>% arrange(Date) %>%
       mutate(Daily_Cases = c(0,diff(Cases))) %>%
@@ -121,7 +123,7 @@ get_US_nowcast_data <- function(datasource, states, startdate) {
 }
 
 # Get Data ------------------------------------------------------------------------------------
-states <- state_codes$state_abbr
+states <- USAboundaries::state_codes$state_abbr
 states <- states[states != ""]
 startdate <- as.Date("2019-12-01")
 
