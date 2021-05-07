@@ -319,10 +319,10 @@ plot_dashboard(GU, params.US, plotcumulative = TRUE)
 
 ### Northern Mariana Islands
 ```{r MP}
-# plot_dashboard(MP, params.US, plotcumulative = TRUE)
+plot_dashboard(MP, params.US, plotcumulative = TRUE)
 ```
 
-Nowcast for Northern Mariana Islands not currently available
+<!-- Nowcast for Northern Mariana Islands not currently available -->
 
 ### Puerto Rico
 ```{r PR}
