@@ -93,4 +93,5 @@ rsconnect/
 .Rproj.user
 #------------- OSX -------------#
 .Rproj.user
-
+#------------- Project -------------#
+data/output/
