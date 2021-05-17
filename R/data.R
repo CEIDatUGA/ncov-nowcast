@@ -83,10 +83,10 @@ get_US_nowcast_data <- function(datasource, states, startdate) {
     
     #pull state data and aggregate county values
     cases.US <- us_jhu_total %>% 
-      select(Date,state_abr,Daily_Cases) %>% 
-      group_by(state_abr, Date) %>% 
+      select(Date,state_abbr,Daily_Cases) %>% 
+      group_by(state_abbr, Date) %>% 
       summarise_if(is.numeric, sum, na.rm=TRUE) %>% 
-      pivot_wider(names_from = state_abr, values_from = "Daily_Cases") %>% 
+      pivot_wider(names_from = state_abbr, values_from = "Daily_Cases") %>% 
       select(c(Date, any_of(states))) %>% 
       filter(!is.na(Date)) %>% 
       mutate_at(vars(-Date), as.integer) %>% 
@@ -97,10 +97,10 @@ get_US_nowcast_data <- function(datasource, states, startdate) {
       mutate(US = rowSums(.[,-1],na.rm = TRUE)) %>% 
       filter(Date < Sys.Date())
     fatalities.US <- us_jhu_total %>% 
-      select(Date,state_abr,Daily_Deaths) %>% 
-      group_by(state_abr, Date) %>% 
+      select(Date,state_abbr,Daily_Deaths) %>% 
+      group_by(state_abbr, Date) %>% 
       summarise_if(is.numeric, sum, na.rm=TRUE) %>% 
-      pivot_wider(names_from = state_abr, values_from = "Daily_Deaths") %>% 
+      pivot_wider(names_from = state_abbr, values_from = "Daily_Deaths") %>% 
       select(c(Date, any_of(states))) %>% 
       filter(!is.na(Date)) %>% 
       mutate_at(vars(-Date), as.integer) %>% 
