@@ -113,8 +113,8 @@ saveRDS( params.global , "data/params.global.rds" )
 
 
 start.time <- proc.time()
-do_nowcast(admin = "Global", cases = cases.US, fatalities = fatalities.US, params.US, 
-           samplesize = 0.05, chunksize = 30)
+do_nowcast( admin = "Global" , cases = cases.global , fatalities = fatalities.global , params.global , 
+           samplesize = 0.05 , chunksize = 30 )
 (proc.time()-start.time)['elapsed']/60
 
 # states ------------------------------------------------------------------

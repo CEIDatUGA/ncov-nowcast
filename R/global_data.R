@@ -1,4 +1,4 @@
-# Code used to extract John Hopkins University data related to COVID-19 epidemic and  reconfigure for nowcast model. 
+# Code used to extract John Hopkins University data related to COVID-19 epidemic, and reconfigure data.frames to fit nowcast model. 
 
 
 # Import necessary packages.
@@ -32,9 +32,9 @@ cases.global <- select( global_jhu_cases , -c( `Province/State`, Lat , Long  ) )
   select( -Cases) %>% 
   pivot_wider( names_from = Country , values_from = "Daily_Cases" ) %>%
   padr::pad(start_val = startdate) %>%
-  replace(., is.na(.), 0) %>%
-  replace(., . < 0, 0) %>%
-  mutate(Global = rowSums(.[,-1],na.rm = TRUE)) %>%
+  replace( . , is.na(.) , 0 ) %>%
+  replace( . , . < 0 , 0 ) %>%
+  mutate( Global = rowSums( .[,-1] , na.rm = TRUE ) ) %>%
   tibbletime::as_tbl_time(index=Date)  
 
 
@@ -57,11 +57,11 @@ cases.deaths <- select( global_jhu_deaths , -c( `Province/State`, Lat , Long  ) 
   mutate( Daily_Cases = c( 0 , diff( Cases ) ) ) %>%
   select( -Cases) %>% 
   pivot_wider( names_from = Country , values_from = "Daily_Cases" ) %>%
-  padr::pad(start_val = startdate) %>%
-  replace(., is.na(.), 0) %>%
-  replace(., . < 0, 0) %>%
-  mutate(Global = rowSums(.[,-1],na.rm = TRUE)) %>%
-  tibbletime::as_tbl_time(index=Date)  
+  padr::pad(start_val = startdate ) %>%
+  replace( . , is.na(.) , 0 ) %>%
+  replace( . , . < 0 , 0 ) %>%
+  mutate( Global = rowSums( .[,-1] , na.rm = TRUE ) ) %>%
+  tibbletime::as_tbl_time( index = Date )  
 
 
 #### ___________________________________________________________________________________________________________________________________________________________________________________________________
@@ -70,7 +70,7 @@ cases.deaths <- select( global_jhu_deaths , -c( `Province/State`, Lat , Long  ) 
 # Save data.frames
 
 saveRDS( cases.global , "data/cases.global.rds" )
-saveRDS( cases.global , "data/fatalities.global.rds" )
+saveRDS( cases.deaths , "data/fatalities.global.rds" )
 
 
 
