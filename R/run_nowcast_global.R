@@ -4,7 +4,7 @@
 start.time <- proc.time()
 library( "tidyverse" )
 source( 'R/nowcast.R' )
-source( 'R/global_data.R' )
+source( 'R/data_global.R' )
 
 # Cores
 # Set number of cores used for nowcast to 4 less than number of cores on system, and no less than one.

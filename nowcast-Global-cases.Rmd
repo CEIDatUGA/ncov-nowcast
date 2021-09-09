@@ -76,7 +76,7 @@ fatalities.global.all <- fatalities.global %>% dplyr::select(Date, deaths = Glob
 
 # calculate and load ascertainment (time varying q with upper and lower bounds)
 
-params.Global$q <- get_ascertainment(cases.global.all, fatalities.global.all, params.Global, window = 7, samplesize = 0.01)
+params.Global$q <- get_ascertainment(cases.global.all, fatalities.global.all, params.Global, window = 7, samplesize = 0.01, savechunks == T)
 saveRDS(params.Global,"data/params.global.rds")
 
 # ## alternate contant q
