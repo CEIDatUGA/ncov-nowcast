@@ -85,14 +85,13 @@ params.global <- list(
 
 # ascertainment ------------------------------------------------------
 
-
 # calculate and load ascertainment (time varying q with upper and lower bounds)
 
 params.global$q <- get_ascertainment( cases.global.all , 
                                       fatalities.global.all , 
                                       params.global , 
                                       window = 7 , # smoothing window for forecasting 
-                                      samplesize = 0.01 ,  # sample size as fraction of reports
+                                      samplesize = 1 ,  # sample size as fraction of reports
                                       chunksize = 30 # process in 30 day chunks
 )
 saveRDS( params.global , "data/params.global.rds" )
@@ -111,7 +110,6 @@ saveRDS( params.global , "data/params.global.rds" )
 
 # Global----------------------------------------------------------------------
 
-
 start.time <- proc.time()
 do_nowcast( admin = "Global" , cases = cases.global , fatalities = fatalities.global , params.global , 
            samplesize = 0.05 , chunksize = 30 )
@@ -119,6 +117,19 @@ do_nowcast( admin = "Global" , cases = cases.global , fatalities = fatalities.gl
 
 # states ------------------------------------------------------------------
 
+#r Remove US so it doesn't overwrite the US.nowcast models
+countriesvector <- cases.global %>% select(-Date, -Global, -US) %>% names()
+for(c in countriesvector ){
+  do_nowcast(admin = c, cases = cases.global, fatalities = fatalities.global, params.global, 
+             samplesize = 1.0, chunksize = 30)
+}
+
+elapsed <- round(as.numeric((proc.time() - start.time)[3]))
+sink("log.txt")
+cat(as.character(Sys.time()), 
+    "\nNowcast for global completed.\nElapsed time =",
+    as.character(lubridate::seconds_to_period(elapsed)))
+sink()
 
 
 
@@ -126,6 +137,25 @@ do_nowcast( admin = "Global" , cases = cases.global , fatalities = fatalities.gl
 
 
 
+
+
+
+
+
+
+load_nowcast <- function(admin) {
+  readRDS(paste0("data/output/", admin, ".nowcast.from.cases.rds"))
+}
+
+
+Global <- load_nowcast("Global")
+
+
+
+p <- plot_nowcast_from_case_reports(Global, plotcumulative = TRUE, maxy = 10^8, legend = FALSE)
+htmlwidgets::saveWidget(p, "Globalnowcast_plot.html")
+
+p
 
 
 
