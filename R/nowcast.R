@@ -1316,9 +1316,9 @@ get_ascertainment <- function(cases,
       padr::pad(end_val = max(cases$Date)) 
   }
   
-  ascertainment$mean[is.na(ascertainment$mean)] <- lastvalue(ascertainment$mean)
-  ascertainment$upper[is.na(ascertainment$upper)] <- lastvalue(ascertainment$upper)
-  ascertainment$lower[is.na(ascertainment$lower)] <- lastvalue(ascertainment$lower)
+  # ascertainment$mean[is.na(ascertainment$mean)] <- lastvalue(ascertainment$mean)
+  # ascertainment$upper[is.na(ascertainment$upper)] <- lastvalue(ascertainment$upper)
+  # ascertainment$lower[is.na(ascertainment$lower)] <- lastvalue(ascertainment$lower)
   
   # # smooth
   # smoothed <- ascertainment$mean %>% movingAverage(window = 7, centered=TRUE)
