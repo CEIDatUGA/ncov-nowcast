@@ -20,13 +20,11 @@ Rachel Mercaldo
 (<a href="mailto:mercaldo@uga.edu" class="email">mercaldo@uga.edu</a>) -
 forecasting  
 Austin M. Smith
-(<a href="mailto:amsmith11@usf.edu" class="email">amsmith11@usf.edu</a>)
-- analysis  
+(<a href="mailto:amsmith11@usf.edu" class="email">amsmith11@usf.edu</a>) - analysis  
 Andrew M. Kramer
 (<a href="mailto:amkramer@usf.edu" class="email">amkramer@usf.edu</a>)  
 Tim Wildauer
-(<a href="mailto:twildauer@blc.edu" class="email">twildauer@blc.edu</a>)
-- deconvolution
+(<a href="mailto:twildauer@blc.edu" class="email">twildauer@blc.edu</a>) - deconvolution
 
 Contributing
 ------------
